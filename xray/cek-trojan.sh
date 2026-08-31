@@ -1,5 +1,5 @@
 #!/bin/bash
-# Cek login Trojan - by znand-dev
+# Cek login Trojan - by ayah alma
 
 clear
 
