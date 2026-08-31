@@ -306,6 +306,20 @@ cp -r sshws/* /etc/ayah-alma/sshws/
 chmod +x /etc/ayah-alma/*/*.sh
 
 # ==========================================
+# COPY & ENABLE SYSTEMD SERVICES
+# ==========================================
+
+info "Memasang dan mengaktifkan service systemd..."
+
+cp -f sshws/*.service /etc/systemd/system/ 2>/dev/null || true
+cp -f internal/go/*.service /etc/systemd/system/ 2>/dev/null || true
+
+systemctl daemon-reload
+
+systemctl enable xray nginx dropbear wg-quick@wg0 udp-custom zivpn ws-dropbear ws-stunnel udpgw 2>/dev/null || true
+systemctl start xray nginx dropbear wg-quick@wg0 udp-custom zivpn ws-dropbear ws-stunnel udpgw 2>/dev/null || true
+
+# ==========================================
 # AUTO MENU LOGIN
 # ==========================================
 
