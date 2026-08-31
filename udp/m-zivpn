@@ -1,0 +1,122 @@
+#!/bin/bash
+# ==========================================
+# MENU UDP ZIVPN - by Ayah Alma
+# ==========================================
+
+clear
+
+RED='\033[1;31m'
+GREEN='\033[1;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[1;34m'
+CYAN='\033[1;36m'
+WHITE='\033[1;37m'
+NC='\033[0m'
+
+# ==============================
+# STATUS
+# ==============================
+
+ZIVPN=$(systemctl is-active zivpn)
+
+if [[ $ZIVPN == "active" ]]; then
+    ZIVPN="${GREEN}🟢 ONLINE${NC}"
+else
+    ZIVPN="${RED}🔴 OFFLINE${NC}"
+fi
+
+# ==============================
+# USER COUNT
+# ==============================
+
+TOTAL=$(grep -vc '^$' /etc/zivpn/users.db 2>/dev/null)
+
+# ==============================
+# DOMAIN
+# ==============================
+
+DOMAIN=$(cat /etc/xray/domain 2>/dev/null)
+
+if [[ -z "$DOMAIN" ]]; then
+    DOMAIN=$(curl -s ipv4.icanhazip.com)
+fi
+
+# ==============================
+# HEADER
+# ==============================
+
+echo -e "${CYAN}┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓${NC}"
+echo -e "${CYAN}┃${WHITE}            ⚡ UDP ZIVPN MENU ⚡            ${CYAN}┃${NC}"
+echo -e "${CYAN}┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛${NC}"
+
+# ==============================
+# INFO
+# ==============================
+
+echo -e "${YELLOW}┌──────────────── INFO ──────────────────────┐${NC}"
+
+printf " ${WHITE}🌍 DOMAIN${NC}      : %-25s\n" "$DOMAIN"
+printf " ${WHITE}⚡ STATUS${NC}      : %-25b\n" "$ZIVPN"
+printf " ${WHITE}👤 TOTAL USER${NC}  : %-25s\n" "$TOTAL"
+printf " ${WHITE}🔌 UDP PORT${NC}    : %-25s\n" "5667"
+
+echo -e "${YELLOW}└────────────────────────────────────────────┘${NC}"
+
+# ==============================
+# MENU
+# ==============================
+
+echo -e "${GREEN}┌──────────────── MENU ──────────────────────┐${NC}"
+
+echo -e " [1] ➕ Add User        [5] 👥 Check Member"
+echo -e " [2] 🎁 Trial User      [6] 📡 Online User"
+echo -e " [3] ♻️ Renew User      [7] 🔄 Restart Service"
+echo -e " [4] ❌ Delete User     [8] 📜 Check Log"
+echo -e "                        [x] ⬅ BACK"
+
+echo -e "${GREEN}└────────────────────────────────────────────┘${NC}"
+
+echo ""
+read -rp "Select Menu : " opt
+
+case $opt in
+1)
+bash /etc/ayah-alma/udp/add-zivpn.sh
+;;
+2)
+bash /etc/ayah-alma/udp/trial-zivpn.sh
+;;
+3)
+bash /etc/ayah-alma/udp/renew-zivpn.sh
+;;
+4)
+bash /etc/ayah-alma/udp/del-zivpn.sh
+;;
+5)
+bash /etc/ayah-alma/udp/cek-zivpn.sh
+;;
+6)
+bash /etc/ayah-alma/udp/monitor-zivpn.sh
+;;
+7)
+systemctl restart zivpn
+echo ""
+echo -e "${GREEN}ZIVPN service restarted successfully!${NC}"
+sleep 2
+exec "$0"
+;;
+8)
+journalctl -u zivpn --no-pager -n 20
+echo ""
+read -n 1 -s -r -p "Tekan apa saja untuk kembali..."
+exec "$0"
+;;
+x|X)
+menu
+;;
+*)
+echo "❌ Pilihan salah!"
+sleep 1
+exec "$0"
+;;
+esac
