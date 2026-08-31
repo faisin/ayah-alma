@@ -1,0 +1,15 @@
+[Unit]
+Description=UDP Custom Service - by Ayah Alma[span_4](start_span)[span_4](end_span)
+After=network.target[span_5](start_span)[span_5](end_span)
+
+[Service]
+User=root[span_6](start_span)[span_6](end_span)
+Type=simple[span_7](start_span)[span_7](end_span)
+WorkingDirectory=/etc/udp-custom[span_8](start_span)[span_8](end_span)
+ExecStart=/usr/local/bin/udp-custom server -c /etc/udp-custom/config.json -exclude 7300[span_9](start_span)[span_9](end_span)
+Restart=always[span_10](start_span)[span_10](end_span)
+RestartSec=3s[span_11](start_span)[span_11](end_span)
+
+[Install]
+WantedBy=multi-user.target[span_12](start_span)[span_12](end_span)
+
