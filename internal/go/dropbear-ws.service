@@ -1,0 +1,14 @@
+[Unit]
+Description=Go WS Stunnel Service - by Ayah Alma[span_4](start_span)[span_4](end_span)
+After=network.target[span_5](start_span)[span_5](end_span)
+
+[Service]
+User=root[span_6](start_span)[span_6](end_span)
+Type=simple[span_7](start_span)[span_7](end_span)
+ExecStart=/usr/local/bin/dropbearws[span_8](start_span)[span_8](end_span)
+Restart=always[span_9](start_span)[span_9](end_span)
+RestartSec=3[span_10](start_span)[span_10](end_span)
+
+[Install]
+WantedBy=multi-user.target[span_11](start_span)[span_11](end_span)
+
