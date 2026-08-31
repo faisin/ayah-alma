@@ -1,7 +1,7 @@
 #!/bin/bash
 # ==========================================
 # Setup Script AYAH-ALMA (XRAY_AIO)
-# XRAY + WireGuard + UDP ZIVPN + SSHWS
+# XRAY + WireGuard + UDP ZIVPN
 # ==========================================
 
 echo "" > /root/log-install.txt
@@ -87,7 +87,7 @@ fi
 mkdir -p /etc/xray
 mkdir -p /etc/v2ray
 mkdir -p /var/lib
-mkdir -p /etc/ayah-alma/{ssh,xray,wg,udp,tools,config,sshws,internal/go}
+mkdir -p /etc/ayah-alma/{ssh,xray,wg,udp,tools,config}
 
 for file in domain scdomain; do
     touch /etc/xray/$file
@@ -193,7 +193,7 @@ bash install/nginx.sh
 info "Installing XRAY Core..."
 bash install/xray.sh
 
-info "Installing SSH Websocket & Tunnel..."
+info "Installing SSH Websocket..."
 bash install/ssh.sh
 
 info "Installing WireGuard..."
@@ -203,12 +203,12 @@ info "Installing UDP ZIVPN..."
 bash install/zivpn.sh
 
 # ==========================================
-# DOWNLOAD MENU, SUBMENU, SSHWS & CONFIG FROM GITHUB
+# DOWNLOAD MENU, SUBMENU & CONFIG FROM GITHUB
 # ==========================================
 
-info "Mengunduh file menu, submenu, sshws, dan config dari repository ayah-alma..."
+info "Mengunduh file menu, submenu, dan config dari repository ayah-alma..."
 
-mkdir -p ssh xray wg udp tools config sshws internal/go
+mkdir -p ssh xray wg udp tools config
 
 wget -O ssh/m-ssh "${REPO_URL}/ssh/m-ssh"
 wget -O ssh/addssh.sh "${REPO_URL}/ssh/addssh.sh"
@@ -227,21 +227,10 @@ wget -O tools/speedtest.sh "${REPO_URL}/tools/speedtest.sh"
 wget -O tools/domain.sh "${REPO_URL}/tools/domain.sh"
 wget -O tools/running.sh "${REPO_URL}/tools/running.sh"
 
-# Mengunduh modul SSHWS / Python & Service
-wget -O sshws/ws-dropbear.py "${REPO_URL}/sshws/ws-dropbear.py"
-wget -O sshws/ws-stunnel.py "${REPO_URL}/sshws/ws-stunnel.py"
-wget -O sshws/udp-custom.service "${REPO_URL}/sshws/udp-custom.service"
-wget -O sshws/udpgw.service "${REPO_URL}/sshws/udpgw.service"
-wget -O sshws/ws-dropbear.service "${REPO_URL}/sshws/ws-dropbear.service"
-wget -O sshws/ws-stunnel.service "${REPO_URL}/sshws/ws-stunnel.service"
-
-# Mengunduh file konfigurasi tambahan
+# Mengunduh file konfigurasi tambahan (misal: nginx.conf)
 wget -O config/nginx.conf "${REPO_URL}/config/nginx.conf"
-wget -O config/issue.net "${REPO_URL}/config/issue.net"
-wget -O config/xray.json "${REPO_URL}/config/xray.json"
 
 wget -O menu.sh "${REPO_URL}/menu.sh"
-wget -O uninstall.sh "${REPO_URL}/uninstall.sh"
 
 # ==========================================
 # COPY MENU COMMAND
@@ -301,23 +290,8 @@ cp -r wg/* /etc/ayah-alma/wg/
 cp -r udp/* /etc/ayah-alma/udp/
 cp -r tools/* /etc/ayah-alma/tools/
 cp -r config/* /etc/ayah-alma/config/
-cp -r sshws/* /etc/ayah-alma/sshws/
 
 chmod +x /etc/ayah-alma/*/*.sh
-
-# ==========================================
-# COPY & ENABLE SYSTEMD SERVICES
-# ==========================================
-
-info "Memasang dan mengaktifkan service systemd..."
-
-cp -f sshws/*.service /etc/systemd/system/ 2>/dev/null || true
-cp -f internal/go/*.service /etc/systemd/system/ 2>/dev/null || true
-
-systemctl daemon-reload
-
-systemctl enable xray nginx dropbear wg-quick@wg0 udp-custom zivpn ws-dropbear ws-stunnel udpgw 2>/dev/null || true
-systemctl start xray nginx dropbear wg-quick@wg0 udp-custom zivpn ws-dropbear ws-stunnel udpgw 2>/dev/null || true
 
 # ==========================================
 # AUTO MENU LOGIN
@@ -340,7 +314,7 @@ chmod 644 /root/.profile
 # CLEAN FILE
 # ==========================================
 
-rm -rf install cf ins-xray.sh ssh xray wg udp tools config sshws menu.sh
+rm -rf install cf ins-xray.sh ssh xray wg udp tools config menu.sh
 
 # ==========================================
 # FINISH
@@ -357,7 +331,7 @@ echo -e "${green}      INSTALLATION DONE       ${NC}"
 echo -e "${blue}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 echo -e " Project     : AYAH-ALMA AIO"
-echo -e " SSH & WS    : INSTALLED"
+echo -e " SSH         : INSTALLED"
 echo -e " XRAY        : INSTALLED"
 echo -e " WireGuard   : INSTALLED"
 echo -e " UDP ZIVPN   : INSTALLED"
@@ -373,3 +347,4 @@ echo -e "${green}♻️ VPS akan reboot dalam 10 detik...${NC}"
 sleep 10
 
 reboot
+tambahkan yang kurang di setup.sh saya, seperti yang ada di sketsa
