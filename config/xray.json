@@ -1,0 +1,211 @@
+{
+  "log": {
+    "access": "/var/log/xray/access.log",
+    "error": "/var/log/xray/error.log",
+    "loglevel": "warning"
+  },
+
+  "inbounds": [
+
+    {
+      "listen": "127.0.0.1",
+      "port": 23456,
+      "protocol": "vmess",
+      "settings": {
+        "clients": []
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "none",
+        "wsSettings": {
+          "path": "/vmess"
+        }
+      },
+      "tag": "vmess-ws-tls"
+    },
+
+    {
+      "listen": "127.0.0.1",
+      "port": 23457,
+      "protocol": "vmess",
+      "settings": {
+        "clients": []
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "none",
+        "wsSettings": {
+          "path": "/vmess"
+        }
+      },
+      "tag": "vmess-ws-nontls"
+    },
+
+    {
+      "listen": "127.0.0.1",
+      "port": 31234,
+      "protocol": "vmess",
+      "settings": {
+        "clients": []
+      },
+      "streamSettings": {
+        "network": "grpc",
+        "security": "none",
+        "grpcSettings": {
+          "serviceName": "vmess-grpc"
+        }
+      },
+      "tag": "vmess-grpc"
+    },
+
+    {
+      "listen": "127.0.0.1",
+      "port": 14016,
+      "protocol": "vless",
+      "settings": {
+        "clients": [],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "none",
+        "wsSettings": {
+          "path": "/vless"
+        }
+      },
+      "tag": "vless-ws-tls"
+    },
+
+    {
+      "listen": "127.0.0.1",
+      "port": 14017,
+      "protocol": "vless",
+      "settings": {
+        "clients": [],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "none",
+        "wsSettings": {
+          "path": "/vless"
+        }
+      },
+      "tag": "vless-ws-nontls"
+    },
+
+    {
+      "listen": "127.0.0.1",
+      "port": 24456,
+      "protocol": "vless",
+      "settings": {
+        "clients": [],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "grpc",
+        "security": "none",
+        "grpcSettings": {
+          "serviceName": "vless-grpc"
+        }
+      },
+      "tag": "vless-grpc"
+    },
+
+    {
+      "listen": "127.0.0.1",
+      "port": 25432,
+      "protocol": "trojan",
+      "settings": {
+        "clients": []
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "none",
+        "wsSettings": {
+          "path": "/trojan-ws"
+        }
+      },
+      "tag": "trojan-ws-tls"
+    },
+
+    {
+      "listen": "127.0.0.1",
+      "port": 33456,
+      "protocol": "trojan",
+      "settings": {
+        "clients": []
+      },
+      "streamSettings": {
+        "network": "grpc",
+        "security": "none",
+        "grpcSettings": {
+          "serviceName": "trojan-grpc"
+        }
+      },
+      "tag": "trojan-grpc"
+    },
+
+    {
+      "listen": "127.0.0.1",
+      "port": 30300,
+      "protocol": "shadowsocks",
+      "settings": {
+        "method": "aes-128-gcm",
+        "clients": []
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "none",
+        "wsSettings": {
+          "path": "/ss-ws"
+        }
+      },
+      "tag": "ssws-ws-tls"
+    },
+
+    {
+      "listen": "127.0.0.1",
+      "port": 30301,
+      "protocol": "shadowsocks",
+      "settings": {
+        "method": "aes-128-gcm",
+        "clients": []
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "none",
+        "wsSettings": {
+          "path": "/ss-ws"
+        }
+      },
+      "tag": "ssws-ws-nontls"
+    },
+
+    {
+      "listen": "127.0.0.1",
+      "port": 30310,
+      "protocol": "shadowsocks",
+      "settings": {
+        "method": "aes-128-gcm",
+        "clients": []
+      },
+      "streamSettings": {
+        "network": "grpc",
+        "security": "none",
+        "grpcSettings": {
+          "serviceName": "ss-grpc"
+        }
+      },
+      "tag": "ssws-grpc"
+    }
+
+  ],
+
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "tag": "direct"
+    }
+  ]
+}
