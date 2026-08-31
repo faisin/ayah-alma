@@ -1,7 +1,7 @@
 #!/bin/bash
 # ==========================================
 # Setup Script AYAH-ALMA (XRAY_AIO)
-# XRAY + WireGuard + UDP ZIVPN
+# XRAY + WireGuard + UDP ZIVPN + SSHWS
 # ==========================================
 
 echo "" > /root/log-install.txt
@@ -36,6 +36,12 @@ function warn() {
 function error() {
     echo -e "${red}[ERROR]${NC} $1"
 }
+
+# ==========================================
+# GITHUB REPOSITORY URL
+# ==========================================
+
+REPO_URL="https://raw.githubusercontent.com/faisin/ayah-alma/main"
 
 # ==========================================
 # TIMER
@@ -169,8 +175,17 @@ info "Domain berhasil diset: $domain"
 sleep 2
 
 # ==========================================
-# RUN INSTALLER
+# RUN INSTALLER / MODULES ONLINE
 # ==========================================
+
+info "Mengunduh dan memasang modul instalasi dari GitHub (ayah-alma)..."
+
+mkdir -p install
+wget -O install/nginx.sh "${REPO_URL}/install/nginx.sh"
+wget -O install/xray.sh "${REPO_URL}/install/xray.sh"
+wget -O install/ssh.sh "${REPO_URL}/install/ssh.sh"
+wget -O install/wg.sh "${REPO_URL}/install/wg.sh"
+wget -O install/zivpn.sh "${REPO_URL}/install/zivpn.sh"
 
 info "Installing NGINX Reverse Proxy..."
 bash install/nginx.sh
@@ -178,7 +193,7 @@ bash install/nginx.sh
 info "Installing XRAY Core..."
 bash install/xray.sh
 
-info "Installing SSH Websocket..."
+info "Installing SSH Websocket & Tunnel..."
 bash install/ssh.sh
 
 info "Installing WireGuard..."
@@ -186,6 +201,47 @@ bash install/wg.sh
 
 info "Installing UDP ZIVPN..."
 bash install/zivpn.sh
+
+# ==========================================
+# DOWNLOAD MENU, SUBMENU, SSHWS & CONFIG FROM GITHUB
+# ==========================================
+
+info "Mengunduh file menu, submenu, sshws, dan config dari repository ayah-alma..."
+
+mkdir -p ssh xray wg udp tools config sshws internal/go
+
+wget -O ssh/m-ssh "${REPO_URL}/ssh/m-ssh"
+wget -O ssh/addssh.sh "${REPO_URL}/ssh/addssh.sh"
+
+wget -O xray/m-vmess "${REPO_URL}/xray/m-vmess"
+wget -O xray/m-vless "${REPO_URL}/xray/m-vless"
+wget -O xray/m-trojan "${REPO_URL}/xray/m-trojan"
+wget -O xray/m-ssws "${REPO_URL}/xray/m-ssws"
+
+wget -O wg/m-wg "${REPO_URL}/wg/m-wg"
+wget -O udp/m-zivpn "${REPO_URL}/udp/m-zivpn"
+
+wget -O tools/tools-menu "${REPO_URL}/tools/tools-menu"
+wget -O tools/backup.sh "${REPO_URL}/tools/backup.sh"
+wget -O tools/speedtest.sh "${REPO_URL}/tools/speedtest.sh"
+wget -O tools/domain.sh "${REPO_URL}/tools/domain.sh"
+wget -O tools/running.sh "${REPO_URL}/tools/running.sh"
+
+# Mengunduh modul SSHWS / Python & Service
+wget -O sshws/ws-dropbear.py "${REPO_URL}/sshws/ws-dropbear.py"
+wget -O sshws/ws-stunnel.py "${REPO_URL}/sshws/ws-stunnel.py"
+wget -O sshws/udp-custom.service "${REPO_URL}/sshws/udp-custom.service"
+wget -O sshws/udpgw.service "${REPO_URL}/sshws/udpgw.service"
+wget -O sshws/ws-dropbear.service "${REPO_URL}/sshws/ws-dropbear.service"
+wget -O sshws/ws-stunnel.service "${REPO_URL}/sshws/ws-stunnel.service"
+
+# Mengunduh file konfigurasi tambahan
+wget -O config/nginx.conf "${REPO_URL}/config/nginx.conf"
+wget -O config/issue.net "${REPO_URL}/config/issue.net"
+wget -O config/xray.json "${REPO_URL}/config/xray.json"
+
+wget -O menu.sh "${REPO_URL}/menu.sh"
+wget -O uninstall.sh "${REPO_URL}/uninstall.sh"
 
 # ==========================================
 # COPY MENU COMMAND
@@ -233,17 +289,11 @@ chmod +x /usr/bin/speedtest.sh
 chmod +x /usr/bin/domain.sh
 chmod +x /usr/bin/running.sh
 
-chmod +x ssh/*.sh
-chmod +x xray/*.sh
-chmod +x wg/*.sh
-chmod +x udp/*.sh
-chmod +x tools/*.sh
-
 # ==========================================
-# COPY RUNTIME SCRIPT
+# COPY RUNTIME SCRIPT TO /etc/ayah-alma/
 # ==========================================
 
-info "Menyalin semua submenu ke /etc/ayah-alma/..."
+info "Menyalin semua submenu dan config ke /etc/ayah-alma/..."
 
 cp -r ssh/* /etc/ayah-alma/ssh/
 cp -r xray/* /etc/ayah-alma/xray/
@@ -290,8 +340,7 @@ chmod 644 /root/.profile
 # CLEAN FILE
 # ==========================================
 
-rm -f cf
-rm -f ins-xray.sh
+rm -rf install cf ins-xray.sh ssh xray wg udp tools config sshws menu.sh
 
 # ==========================================
 # FINISH
@@ -304,11 +353,11 @@ elapsed=$((end_time - start_time))
 clear
 
 echo -e "${blue}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${green}      INSTALLATION DONE${NC}"
+echo -e "${green}      INSTALLATION DONE       ${NC}"
 echo -e "${blue}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 echo -e " Project     : AYAH-ALMA AIO"
-echo -e " SSH         : INSTALLED"
+echo -e " SSH & WS    : INSTALLED"
 echo -e " XRAY        : INSTALLED"
 echo -e " WireGuard   : INSTALLED"
 echo -e " UDP ZIVPN   : INSTALLED"
