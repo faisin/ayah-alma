@@ -87,7 +87,7 @@ fi
 mkdir -p /etc/xray
 mkdir -p /etc/v2ray
 mkdir -p /var/lib
-mkdir -p /etc/ayah-alma/{ssh,xray,wg,udp,tools}
+mkdir -p /etc/ayah-alma/{ssh,xray,wg,udp,tools,config}
 
 for file in domain scdomain; do
     touch /etc/xray/$file
@@ -203,12 +203,12 @@ info "Installing UDP ZIVPN..."
 bash install/zivpn.sh
 
 # ==========================================
-# DOWNLOAD MENU & SUBMENU FROM GITHUB
+# DOWNLOAD MENU, SUBMENU & CONFIG FROM GITHUB
 # ==========================================
 
-info "Mengunduh file menu dan submenu dari repository ayah-alma..."
+info "Mengunduh file menu, submenu, dan config dari repository ayah-alma..."
 
-mkdir -p ssh xray wg udp tools
+mkdir -p ssh xray wg udp tools config
 
 wget -O ssh/m-ssh "${REPO_URL}/ssh/m-ssh"
 wget -O ssh/addssh.sh "${REPO_URL}/ssh/addssh.sh"
@@ -226,6 +226,10 @@ wget -O tools/backup.sh "${REPO_URL}/tools/backup.sh"
 wget -O tools/speedtest.sh "${REPO_URL}/tools/speedtest.sh"
 wget -O tools/domain.sh "${REPO_URL}/tools/domain.sh"
 wget -O tools/running.sh "${REPO_URL}/tools/running.sh"
+
+# Mengunduh file konfigurasi tambahan (misal: nginx.conf)
+wget -O config/nginx.conf "${REPO_URL}/config/nginx.conf"
+
 wget -O menu.sh "${REPO_URL}/menu.sh"
 
 # ==========================================
@@ -278,13 +282,14 @@ chmod +x /usr/bin/running.sh
 # COPY RUNTIME SCRIPT TO /etc/ayah-alma/
 # ==========================================
 
-info "Menyalin semua submenu ke /etc/ayah-alma/..."
+info "Menyalin semua submenu dan config ke /etc/ayah-alma/..."
 
 cp -r ssh/* /etc/ayah-alma/ssh/
 cp -r xray/* /etc/ayah-alma/xray/
 cp -r wg/* /etc/ayah-alma/wg/
 cp -r udp/* /etc/ayah-alma/udp/
 cp -r tools/* /etc/ayah-alma/tools/
+cp -r config/* /etc/ayah-alma/config/
 
 chmod +x /etc/ayah-alma/*/*.sh
 
@@ -309,7 +314,7 @@ chmod 644 /root/.profile
 # CLEAN FILE
 # ==========================================
 
-rm -rf install cf ins-xray.sh ssh xray wg udp tools menu.sh
+rm -rf install cf ins-xray.sh ssh xray wg udp tools config menu.sh
 
 # ==========================================
 # FINISH
