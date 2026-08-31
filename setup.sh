@@ -38,12 +38,6 @@ function error() {
 }
 
 # ==========================================
-# GITHUB REPOSITORY URL
-# ==========================================
-
-REPO_URL="https://raw.githubusercontent.com/faisin/ayah-alma/main"
-
-# ==========================================
 # TIMER
 # ==========================================
 
@@ -87,7 +81,7 @@ fi
 mkdir -p /etc/xray
 mkdir -p /etc/v2ray
 mkdir -p /var/lib
-mkdir -p /etc/ayah-alma/{ssh,xray,wg,udp,tools,config}
+mkdir -p /etc/ayah-alma/{ssh,xray,wg,udp,tools,config,sshws,internal/go}
 
 for file in domain scdomain; do
     touch /etc/xray/$file
@@ -175,17 +169,8 @@ info "Domain berhasil diset: $domain"
 sleep 2
 
 # ==========================================
-# RUN INSTALLER / MODULES ONLINE
+# RUN INSTALLER
 # ==========================================
-
-info "Mengunduh dan memasang modul instalasi dari GitHub (ayah-alma)..."
-
-mkdir -p install
-wget -O install/nginx.sh "${REPO_URL}/install/nginx.sh"
-wget -O install/xray.sh "${REPO_URL}/install/xray.sh"
-wget -O install/ssh.sh "${REPO_URL}/install/ssh.sh"
-wget -O install/wg.sh "${REPO_URL}/install/wg.sh"
-wget -O install/zivpn.sh "${REPO_URL}/install/zivpn.sh"
 
 info "Installing NGINX Reverse Proxy..."
 bash install/nginx.sh
@@ -201,36 +186,6 @@ bash install/wg.sh
 
 info "Installing UDP ZIVPN..."
 bash install/zivpn.sh
-
-# ==========================================
-# DOWNLOAD MENU, SUBMENU & CONFIG FROM GITHUB
-# ==========================================
-
-info "Mengunduh file menu, submenu, dan config dari repository ayah-alma..."
-
-mkdir -p ssh xray wg udp tools config
-
-wget -O ssh/m-ssh "${REPO_URL}/ssh/m-ssh"
-wget -O ssh/addssh.sh "${REPO_URL}/ssh/addssh.sh"
-
-wget -O xray/m-vmess "${REPO_URL}/xray/m-vmess"
-wget -O xray/m-vless "${REPO_URL}/xray/m-vless"
-wget -O xray/m-trojan "${REPO_URL}/xray/m-trojan"
-wget -O xray/m-ssws "${REPO_URL}/xray/m-ssws"
-
-wget -O wg/m-wg "${REPO_URL}/wg/m-wg"
-wget -O udp/m-zivpn "${REPO_URL}/udp/m-zivpn"
-
-wget -O tools/tools-menu "${REPO_URL}/tools/tools-menu"
-wget -O tools/backup.sh "${REPO_URL}/tools/backup.sh"
-wget -O tools/speedtest.sh "${REPO_URL}/tools/speedtest.sh"
-wget -O tools/domain.sh "${REPO_URL}/tools/domain.sh"
-wget -O tools/running.sh "${REPO_URL}/tools/running.sh"
-
-# Mengunduh file konfigurasi tambahan (misal: nginx.conf)
-wget -O config/nginx.conf "${REPO_URL}/config/nginx.conf"
-
-wget -O menu.sh "${REPO_URL}/menu.sh"
 
 # ==========================================
 # COPY MENU COMMAND
@@ -278,11 +233,17 @@ chmod +x /usr/bin/speedtest.sh
 chmod +x /usr/bin/domain.sh
 chmod +x /usr/bin/running.sh
 
+chmod +x ssh/*.sh
+chmod +x xray/*.sh
+chmod +x wg/*.sh
+chmod +x udp/*.sh
+chmod +x tools/*.sh
+
 # ==========================================
-# COPY RUNTIME SCRIPT TO /etc/ayah-alma/
+# COPY RUNTIME SCRIPT
 # ==========================================
 
-info "Menyalin semua submenu dan config ke /etc/ayah-alma/..."
+info "Menyalin semua submenu ke /etc/ayah-alma/..."
 
 cp -r ssh/* /etc/ayah-alma/ssh/
 cp -r xray/* /etc/ayah-alma/xray/
@@ -290,8 +251,23 @@ cp -r wg/* /etc/ayah-alma/wg/
 cp -r udp/* /etc/ayah-alma/udp/
 cp -r tools/* /etc/ayah-alma/tools/
 cp -r config/* /etc/ayah-alma/config/
+cp -r sshws/* /etc/ayah-alma/sshws/
 
 chmod +x /etc/ayah-alma/*/*.sh
+
+# ==========================================
+# COPY & ENABLE SYSTEMD SERVICES
+# ==========================================
+
+info "Memasang dan mengaktifkan service systemd..."
+
+cp -f sshws/*.service /etc/systemd/system/ 2>/dev/null || true
+cp -f internal/go/*.service /etc/systemd/system/ 2>/dev/null || true
+
+systemctl daemon-reload
+
+systemctl enable xray nginx dropbear wg-quick@wg0 udp-custom zivpn ws-dropbear ws-stunnel udpgw 2>/dev/null || true
+systemctl start xray nginx dropbear wg-quick@wg0 udp-custom zivpn ws-dropbear ws-stunnel udpgw 2>/dev/null || true
 
 # ==========================================
 # AUTO MENU LOGIN
@@ -314,7 +290,8 @@ chmod 644 /root/.profile
 # CLEAN FILE
 # ==========================================
 
-rm -rf install cf ins-xray.sh ssh xray wg udp tools config menu.sh
+rm -f cf
+rm -f ins-xray.sh
 
 # ==========================================
 # FINISH
@@ -327,7 +304,7 @@ elapsed=$((end_time - start_time))
 clear
 
 echo -e "${blue}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${green}      INSTALLATION DONE       ${NC}"
+echo -e "${green}      INSTALLATION DONE${NC}"
 echo -e "${blue}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 echo -e " Project     : AYAH-ALMA AIO"
@@ -347,4 +324,3 @@ echo -e "${green}♻️ VPS akan reboot dalam 10 detik...${NC}"
 sleep 10
 
 reboot
-tambahkan yang kurang di setup.sh saya, seperti yang ada di sketsa
