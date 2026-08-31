@@ -211,6 +211,7 @@ info "Mengunduh file menu dan submenu dari repository ayah-alma..."
 mkdir -p ssh xray wg udp tools
 
 wget -O ssh/m-ssh "${REPO_URL}/ssh/m-ssh"
+wget -O ssh/addssh.sh "${REPO_URL}/ssh/addssh.sh"
 
 wget -O xray/m-vmess "${REPO_URL}/xray/m-vmess"
 wget -O xray/m-vless "${REPO_URL}/xray/m-vless"
