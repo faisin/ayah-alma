@@ -1,7 +1,6 @@
 #!/bin/bash
-# Menu Trojan - by znand-dev[span_1](start_span)[span_1](end_span)
+# Menu Trojan - by Ayah Alma
 
-# Warna
 GREEN='\e[1;32m'
 YELLOW='\e[1;33m'
 CYAN='\e[1;36m'
@@ -24,19 +23,15 @@ case $opt in
 1) 
 bash /etc/ayah-alma/xray/add-trojan.sh 
 ;;
-
 2) 
 bash /etc/ayah-alma/xray/del-trojan.sh 
 ;;
-
 3)
 bash /etc/ayah-alma/xray/cek-trojan.sh 
 ;;
-
 4) 
 bash /etc/ayah-alma/xray/renew-trojan.sh 
 ;;
-
 x) 
 menu 
 ;;
