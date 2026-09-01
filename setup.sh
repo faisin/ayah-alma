@@ -104,10 +104,10 @@ touch /var/lib/ipvps.conf
 ln -fs /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
 
 # ==========================================
-# UPDATE & INSTALL PACKAGE
+# UPDATE & INSTALL PACKAGE & GOLANG
 # ==========================================
 
-info "Installing dependencies..."
+info "Installing dependencies and Golang..."
 
 apt update -y
 
@@ -127,7 +127,8 @@ iptables-persistent \
 netfilter-persistent \
 vnstat \
 openssl \
-ufw >/dev/null 2>&1
+ufw \
+golang >/dev/null 2>&1
 
 # ==========================================
 # INSTALL LINUX HEADER
@@ -208,7 +209,7 @@ bash install/zivpn.sh
 
 info "Mengunduh file menu, submenu, sshws, dan config dari repository ayah-alma..."
 
-mkdir -p ssh xray wg udp tools config sshws internal/go
+mkdir -p ssh xray wg udp tools config sshws internal/go/{dropbear-ws,stunnel-ws}
 
 wget -O ssh/m-ssh "${REPO_URL}/ssh/m-ssh"
 wget -O ssh/addssh.sh "${REPO_URL}/ssh/addssh.sh"
@@ -234,6 +235,14 @@ wget -O sshws/udp-custom.service "${REPO_URL}/sshws/udp-custom.service"
 wget -O sshws/udpgw.service "${REPO_URL}/sshws/udpgw.service"
 wget -O sshws/ws-dropbear.service "${REPO_URL}/sshws/ws-dropbear.service"
 wget -O sshws/ws-stunnel.service "${REPO_URL}/sshws/ws-stunnel.service"
+
+# Mengunduh Source Go Dropbear-WS & Stunnel-WS
+wget -O internal/go/dropbear-ws/main.go "${REPO_URL}/internal/go/dropbear-ws/main.go"
+wget -O internal/go/dropbear-ws/go.mod "${REPO_URL}/internal/go/dropbear-ws/go.mod" 2>/dev/null || true
+wget -O internal/go/stunnel-ws/main.go "${REPO_URL}/internal/go/stunnel-ws/main.go" 2>/dev/null || true
+wget -O internal/go/stunnel-ws/go.mod "${REPO_URL}/internal/go/stunnel-ws/go.mod" 2>/dev/null || true
+wget -O internal/go/dropbear-ws.service "${REPO_URL}/internal/go/dropbear-ws.service" 2>/dev/null || true
+wget -O internal/go/stunnel-ws.service "${REPO_URL}/internal/go/stunnel-ws.service" 2>/dev/null || true
 
 # Mengunduh file konfigurasi tambahan
 wget -O config/nginx.conf "${REPO_URL}/config/nginx.conf"
@@ -281,15 +290,31 @@ cp -r sshws/* /etc/ayah-alma/sshws/
 chmod +x /etc/ayah-alma/*/*.sh 2>/dev/null || true
 
 # ==========================================
-# COPY & ENABLE SYSTEMD SERVICES (PASTIKAN BINARY SUDAH SIAP)
+# KOMPILASI GO BINARY & SETUP SERVICES
 # ==========================================
 
-info "Memasang dan mengaktifkan service systemd secara aman..."
+info "Mengompilasi layanan Go WebSocket dan memasang systemd service..."
+
+if [ -f "internal/go/dropbear-ws/main.go" ]; then
+    cd internal/go/dropbear-ws
+    go mod init dropbear-ws 2>/dev/null || true
+    go build -o /usr/local/bin/dropbearws main.go
+    chmod +x /usr/local/bin/dropbearws
+    cd - >/dev/null
+fi
+
+if [ -f "internal/go/stunnel-ws/main.go" ]; then
+    cd internal/go/stunnel-ws
+    go mod init stunnel-ws 2>/dev/null || true
+    go build -o /usr/local/bin/stunnelws main.go
+    chmod +x /usr/local/bin/stunnelws
+    cd - >/dev/null
+fi
 
 cp -f sshws/*.service /etc/systemd/system/ 2>/dev/null || true
 cp -f internal/go/*.service /etc/systemd/system/ 2>/dev/null || true
 
-# Salin juga skrip python ws ke /usr/local/bin agar path ExecStart valid
+# Backup Python script ke /usr/local/bin jika diperlukan
 if [ -f "sshws/ws-dropbear.py" ]; then
     cp sshws/ws-dropbear.py /usr/local/bin/ws-dropbear
     chmod +x /usr/local/bin/ws-dropbear
@@ -302,7 +327,7 @@ fi
 
 systemctl daemon-reload
 
-for svc in xray nginx dropbear wg-quick@wg0 udp-custom zivpn ws-dropbear ws-stunnel udpgw; do
+for svc in xray nginx dropbear wg-quick@wg0 udp-custom zivpn dropbear-ws stunnel-ws ws-dropbear ws-stunnel udpgw; do
     systemctl enable "$svc" 2>/dev/null || true
     systemctl restart "$svc" 2>/dev/null || true
 done
@@ -345,7 +370,7 @@ echo -e "${green}      INSTALLATION DONE       ${NC}"
 echo -e "${blue}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 echo -e " Project     : AYAH-ALMA AIO"
-echo -e " SSH & WS    : INSTALLED"
+echo -e " SSH & WS    : INSTALLED & COMPILED"
 echo -e " XRAY        : INSTALLED"
 echo -e " WireGuard   : INSTALLED"
 echo -e " UDP ZIVPN   : INSTALLED"
