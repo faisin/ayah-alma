@@ -6,13 +6,6 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-BASE_DIR="/root/ayah-alma"
-
-if [[ ! -d "$BASE_DIR" ]]; then
-    echo -e "${RED}[ERROR] Repo ayah-alma not found!${NC}"
-    exit 1
-fi
-
 clear
 
 echo -e "${GREEN}▶️ Installing NGINX Reverse Proxy...${NC}"
@@ -33,16 +26,17 @@ rm -f /etc/nginx/sites-available/default
 # CREATE DIR
 mkdir -p /etc/nginx/conf.d
 
-# COPY MAIN NGINX CONFIG
-if [[ ! -f "$BASE_DIR/config/nginx.conf" ]]; then
-    echo -e "${RED}[ERROR] nginx.conf not found in ayah-alma repository!${NC}"
-    exit 1
+# COPY MAIN NGINX CONFIG DARI DIREKTORI LOKAL INSTALASI
+if [[ -f "./config/nginx.conf" ]]; then
+    cp ./config/nginx.conf /etc/nginx/nginx.conf
+elif [[ -f "/root/ayah-alma/config/nginx.conf" ]]; then
+    cp /root/ayah-alma/config/nginx.conf /etc/nginx/nginx.conf
+else
+    echo -e "${RED}[WARNING] nginx.conf tidak ditemukan, melewati penyalinan config kustom...${NC}"
 fi
 
-cp "$BASE_DIR/config/nginx.conf" /etc/nginx/nginx.conf
-
 # PERMISSION
-chmod 644 /etc/nginx/nginx.conf
+chmod 644 /etc/nginx/nginx.conf 2>/dev/null || true
 
 # TEST CONFIG
 echo -e "${GREEN}🧪 Testing Nginx Config...${NC}"
