@@ -12,22 +12,24 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 echo -e "${CYAN}          📡 STATUS LAYANAN AKTIF           ${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-# Cek status layanan utama
+# Daftar layanan yang dicek sesuai systemd
 services=(
-  "ssh"
-  "dropbear"
-  "sshws"
   "xray"
-  "stunnel4"
+  "nginx"
+  "dropbear"
   "wg-quick@wg0"
+  "udp-custom"
+  "zivpn"
+  "ws-dropbear"
+  "ws-stunnel"
 )
 
 for svc in "${services[@]}"; do
   status=$(systemctl is-active $svc 2>/dev/null)
   if [[ "$status" == "active" ]]; then
-    printf "%-15s : ${GREEN}%s${NC}\n" "$svc" "${status^^}"
+    printf "%-15s : ${GREEN}%s${NC}\n" "$svc" "ONLINE"
   else
-    printf "%-15s : \e[1;31m%s${NC}\n" "$svc" "${status^^:-INACTIVE}"
+    printf "%-15s : \e[1;31m%s${NC}\n" "$svc" "OFFLINE"
   fi
 done
 
