@@ -22,6 +22,13 @@ done
 
 read -rp "Expired (days): " masaaktif
 
+# --- TAMBAHAN INPUT LIMIT DEVICE ---
+read -rp "Limit Device (Contoh: 2): " limit_device
+if [[ -z "$limit_device" ]]; then
+    limit_device="1"
+fi
+# ----------------------------------
+
 uuid=$(cat /proc/sys/kernel/random/uuid)
 exp=$(date -d "$masaaktif days" +"%Y-%m-%d")
 
@@ -116,8 +123,8 @@ if ! systemctl is-active --quiet xray; then
 
 fi
 
-# simpan database user
-echo "${user} ${exp} ${uuid}" >> /etc/xray/vless.db
+# simpan database user (termasuk limit device)
+echo "${user} ${exp} ${uuid} ${limit_device}" >> /etc/xray/vless.db
 
 # generate vless link
 vlesslink1="vless://${uuid}@${domain}:${tls}?encryption=none&security=tls&sni=${domain}&type=ws&host=${domain}&path=%2Fvless#${user}"
@@ -137,6 +144,7 @@ echo -e "Port TLS       : ${tls}"
 echo -e "Port none TLS  : ${none}"
 echo -e "Port gRPC      : ${grpc}"
 echo -e "UUID           : ${uuid}"
+echo -e "Limit Device   : ${limit_device}"
 echo -e "Encryption     : none"
 echo -e "Network        : ws / grpc"
 echo -e "Path           : /vless"
@@ -161,4 +169,3 @@ echo ""
 read -n 1 -s -r -p "Tekan apa saja untuk kembali ke menu..."
 
 menu
-
