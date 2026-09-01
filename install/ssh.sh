@@ -118,8 +118,10 @@ echo ""
 echo -e "${GREEN}[INFO] Installing BadVPN UDPGW...${NC}"
 echo ""
 
-wget -qO /usr/local/bin/badvpn-udpgw "https://raw.githubusercontent.com/faisin/bin/main/badvpn-udpgw" || true
-chmod +x /usr/local/bin/badvpn-udpgw
+if [ -f "$BASE_DIR/bin/badvpn-udpgw" ]; then
+    cp "$BASE_DIR/bin/badvpn-udpgw" /usr/local/bin/badvpn-udpgw
+    chmod +x /usr/local/bin/badvpn-udpgw
+fi
 
 if [ -f "$BASE_DIR/sshws/udpgw.service" ]; then
     cp "$BASE_DIR/sshws/udpgw.service" /etc/systemd/system/
@@ -131,8 +133,10 @@ echo ""
 echo -e "${GREEN}[INFO] Installing UDP Custom...${NC}"
 echo ""
 
-wget -qO /usr/local/bin/udp-custom "https://raw.githubusercontent.com/faisin/bin/main/udp-custom-linux-amd64" || true
-chmod +x /usr/local/bin/udp-custom
+if [ -f "$BASE_DIR/bin/udp-custom" ]; then
+    cp "$BASE_DIR/bin/udp-custom" /usr/local/bin/udp-custom
+    chmod +x /usr/local/bin/udp-custom
+fi
 
 mkdir -p /etc/udp-custom
 if [ -f "$BASE_DIR/config/udp-custom.json" ]; then
