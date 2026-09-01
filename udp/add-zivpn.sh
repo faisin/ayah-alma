@@ -1,3 +1,5 @@
+m-zivpn
+
 #!/bin/bash
 # ==========================================
 # ADD ZIVPN USER - by Ayah Alma
@@ -43,16 +45,26 @@ fi
 read -rp "Expired (days) : " days
 
 # ==============================
+# INPUT LIMIT DEVICE
+# ==============================
+
+read -rp "Limit Device   : " limit_device
+
+if ! [[ "$limit_device" =~ ^[0-9]+$ ]]; then
+    limit_device="1"
+fi
+
+# ==============================
 # GENERATE EXP DATE
 # ==============================
 
 exp=$(date -d "$days days" +"%Y-%m-%d")
 
 # ==============================
-# SAVE USER
+# SAVE USER (Dengan Limit Device)
 # ==============================
 
-echo "$user $exp" >> $DB
+echo "$user $exp $limit_device" >> $DB
 
 # ==============================
 # REBUILD CONFIG
@@ -84,6 +96,7 @@ echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━�
 
 printf " ${WHITE}Username${NC}    : %s\n" "$user"
 printf " ${WHITE}Expired On${NC}  : %s\n" "$exp"
+printf " ${WHITE}Limit Device${NC}: %s\n" "$limit_device"
 printf " ${WHITE}Host/IP${NC}     : %s\n" "$DOMAIN"
 printf " ${WHITE}UDP Port${NC}    : 5667\n"
 printf " ${WHITE}Password${NC}    : %s\n" "$user"
@@ -95,13 +108,13 @@ echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo -e "${YELLOW}📱 ZIVPN CLIENT CONFIG${NC}"
 echo ""
-echo -e " Host      : ${DOMAIN}"
-echo -e " Password  : ${user}"
-echo -e " UDP Mode  : ON"
-echo -e " TLS       : ON"
-echo -e " OBFS      : zivpn"
+echo -e " Host         : ${DOMAIN}"
+echo -e " Password     : ${user}"
+echo -e " Limit Device : ${limit_device}"
+echo -e " UDP Mode     : ON"
+echo -e " TLS          : ON"
+echo -e " OBFS         : zivpn"
 
 echo ""
 read -n 1 -s -r -p "Press any key to back menu..."
 m-zivpn
-
