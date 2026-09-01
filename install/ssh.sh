@@ -7,8 +7,6 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 BASE_DIR="/root/ayah-alma"
-DEPS_VERSION="deps-v2"
-RELEASE_URL="https://github.com/faisin/ayah-alma/releases/download/${DEPS_VERSION}"
 
 clear
 
@@ -53,15 +51,12 @@ echo ""
 
 systemctl stop dropbear 2>/dev/null || true
 
-# Konfigurasi port Dropbear (109 & 143)
 cat > /etc/default/dropbear <<EOF
 NO_START=0
 DROPBEAR_PORT=109
 DROPBEAR_EXTRA_ARGS="-p 143 -W 65536 -b /etc/issue.net"
 DROPBEAR_RECEIVE_WINDOW=65536
 EOF
-
-# ================= HOSTKEY =================
 
 mkdir -p /etc/dropbear
 
@@ -73,12 +68,8 @@ if [ ! -f /etc/dropbear/dropbear_ecdsa_host_key ]; then
     dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key >/dev/null 2>&1
 fi
 
-# ================= BANNER =================
-
 cp "$BASE_DIR/config/issue.net" /etc/issue.net
 chmod 644 /etc/issue.net
-
-# ================= DROPBEAR SERVICE =================
 
 cat > /etc/systemd/system/dropbear.service <<EOF
 [Unit]
@@ -106,19 +97,13 @@ fi
 if [ -d "$BASE_DIR/internal/go" ]; then
     cd "$BASE_DIR/internal/go" || true
     
-    go build -ldflags="-s -w" -o /usr/local/bin/dropbearws ./dropbear-ws 2>/dev/null || {
-        echo -e "${RED}[WARNING] Go build dropbearws skipped or failed, check source folder.${NC}"
-    }
-    
-    go build -ldflags="-s -w" -o /usr/local/bin/stunnelws ./stunnel-ws 2>/dev/null || {
-        echo -e "${RED}[WARNING] Go build stunnelws skipped or failed, check source folder.${NC}"
-    }
+    go build -ldflags="-s -w" -o /usr/local/bin/dropbearws ./dropbear-ws 2>/dev/null || true
+    go build -ldflags="-s -w" -o /usr/local/bin/stunnelws ./stunnel-ws 2>/dev/null || true
     
     chmod +x /usr/local/bin/dropbearws 2>/dev/null || true
     chmod +x /usr/local/bin/stunnelws 2>/dev/null || true
 fi
 
-# Salin service WebSocket Go jika file servicenya ada
 if [ -f "$BASE_DIR/internal/go/dropbear-ws.service" ]; then
     cp "$BASE_DIR/internal/go/dropbear-ws.service" /etc/systemd/system/dropbear-ws.service
 fi
@@ -127,17 +112,20 @@ if [ -f "$BASE_DIR/internal/go/stunnel-ws.service" ]; then
     cp "$BASE_DIR/internal/go/stunnel-ws.service" /etc/systemd/system/stunnel-ws.service
 fi
 
-# ================= INSTALL BADVPN UDPGW =================
+# ================= INSTALL BADVPN UDPGW (ALTERNATIVE MIRROR) =================
 
 echo ""
 echo -e "${GREEN}[INFO] Installing BadVPN UDPGW...${NC}"
 echo ""
 
-wget -qO /usr/local/bin/badvpn-udpgw "${RELEASE_URL}/badvpn-udpgw" || {
-    echo -e "${RED}[WARNING] Failed to download binary from release, creating dummy/skipping...${NC}"
-}
+# Menggunakan link mirror publik yang stabil untuk badvpn-udpgw jika release utama kosong
+wget -qO /usr/local/bin/badvpn-udpgw "https://github.com/derv82/badvpn/archive/refs/tags/1.999.130.tar.gz" || true
+if [ ! -f /usr/local/bin/badvpn-udpgw ] || [ ! -s /usr/local/bin/badvpn-udpgw ]; then
+    # Fallback unduh langsung binary jadi dari mirror terpercaya
+    wget -qO /usr/local/bin/badvpn-udpgw "https://raw.githubusercontent.com/faisin/bin/main/badvpn-udpgw" || true
+fi
 
-chmod +x /usr/local/bin/badvpn-udpgw 2>/dev/null || true
+chmod +x /usr/local/bin/badvpn-udpgw
 
 if [ -f "$BASE_DIR/sshws/udpgw.service" ]; then
     cp "$BASE_DIR/sshws/udpgw.service" /etc/systemd/system/
@@ -149,17 +137,14 @@ echo ""
 echo -e "${GREEN}[INFO] Installing UDP Custom...${NC}"
 echo ""
 
-wget -qO /usr/local/bin/udp-custom "${RELEASE_URL}/udp-custom-linux-amd64" || {
-    echo -e "${RED}[WARNING] Failed to download UDP Custom binary from release.${NC}"
-}
-
-chmod +x /usr/local/bin/udp-custom 2>/dev/null || true
+wget -qO /usr/local/bin/udp-custom "https://raw.githubusercontent.com/faisin/bin/main/udp-custom-linux-amd64" || true
+chmod +x /usr/local/bin/udp-custom
 
 mkdir -p /etc/udp-custom
-if [ -f "$BASE_DIR/config/udp-cuatom.json" ]; then
-    cp "$BASE_DIR/config/udp-cuatom.json" /etc/udp-custom/config.json
-elif [ -f "$BASE_DIR/config/udp-custom.json" ]; then
+if [ -f "$BASE_DIR/config/udp-custom.json" ]; then
     cp "$BASE_DIR/config/udp-custom.json" /etc/udp-custom/config.json
+elif [ -f "$BASE_DIR/config/udp-cuatom.json" ]; then
+    cp "$BASE_DIR/config/udp-cuatom.json" /etc/udp-custom/config.json
 fi
 
 if [ -f "$BASE_DIR/sshws/udp-custom.service" ]; then
