@@ -62,22 +62,26 @@ ufw >/dev/null 2>&1
 systemctl stop zivpn >/dev/null 2>&1
 
 # ==============================
-# DOWNLOAD BINARY
+# DOWNLOAD / COPY BINARY
 # ==============================
 
-echo -e "${YELLOW}[*] Downloading ZIVPN binary...${NC}"
+echo -e "${YELLOW}[*] Setting up ZIVPN binary...${NC}"
 
-wget -q -O /usr/local/bin/zivpn \
-https://github.com/zahidbd2/udp-zivpn/releases/download/udp-zivpn_1.4.9/udp-zivpn-linux-amd64[span_4](start_span)[span_4](end_span)
-
-chmod +x /usr/local/bin/zivpn
+if [ -f "$BASE_DIR/bin/zivpn" ]; then
+    cp "$BASE_DIR/bin/zivpn" /usr/local/bin/zivpn
+    chmod +x /usr/local/bin/zivpn
+else
+    wget -q -O /usr/local/bin/zivpn \
+    "https://github.com/zahidbd2/udp-zivpn/releases/download/udp-zivpn_1.4.9/udp-zivpn-linux-amd64"
+    chmod +x /usr/local/bin/zivpn
+fi
 
 # ==============================
 # CHECK BINARY
 # ==============================
 
 if [[ ! -f /usr/local/bin/zivpn ]]; then
-    echo -e "${RED}Failed downloading binary!${NC}"
+    echo -e "${RED}Failed setting up binary!${NC}"
     exit 1
 fi
 
@@ -106,7 +110,7 @@ if [[ -f "$BASE_DIR/config/zivpn_users.db" ]]; then
     cp "$BASE_DIR/config/zivpn_users.db" /etc/zivpn/users.db
 else
     touch /etc/zivpn/users.db
-    echo "testuser" > /etc/zivpn/users.db[span_5](start_span)[span_5](end_span)
+    echo "testuser" > /etc/zivpn/users.db
 fi
 
 # ==============================
@@ -121,7 +125,7 @@ openssl req -new -newkey rsa:4096 \
 -x509 \
 -subj "/C=ID/ST=Jakarta/L=Jakarta/O=AyahAlma/OU=UDP/CN=zivpn" \
 -keyout /etc/zivpn/zivpn.key \
--out /etc/zivpn/zivpn.crt >/dev/null 2>&1[span_6](start_span)[span_6](end_span)
+-out /etc/zivpn/zivpn.crt >/dev/null 2>&1
 
 # ==============================
 # GENERATE CONFIG
@@ -129,7 +133,7 @@ openssl req -new -newkey rsa:4096 \
 
 echo -e "${YELLOW}[*] Generating config...${NC}"
 
-USERS=$(awk '{print "\"" $1 "\""}' /etc/zivpn/users.db | paste -sd "," -)[span_7](start_span)[span_7](end_span)
+USERS=$(awk '{print "\"" $1 "\""}' /etc/zivpn/users.db | paste -sd "," -)
 
 cat > /etc/zivpn/config.json <<EOF
 {
@@ -142,7 +146,7 @@ cat > /etc/zivpn/config.json <<EOF
     "config": [ $USERS ]
   }
 }
-EOF[span_8](start_span)[span_8](end_span)
+EOF
 
 # ==============================
 # SYSTEM OPTIMIZATION
@@ -150,14 +154,14 @@ EOF[span_8](start_span)[span_8](end_span)
 
 echo -e "${YELLOW}[*] Optimizing UDP buffer...${NC}"
 
-sysctl -w net.core.rmem_max=16777216 >/dev/null[span_9](start_span)[span_9](end_span)
-sysctl -w net.core.wmem_max=16777216 >/dev/null[span_10](start_span)[span_10](end_span)
+sysctl -w net.core.rmem_max=16777216 >/dev/null
+sysctl -w net.core.wmem_max=16777216 >/dev/null
 
 grep -q "net.core.rmem_max" /etc/sysctl.conf || \
-echo "net.core.rmem_max=16777216" >> /etc/sysctl.conf[span_11](start_span)[span_11](end_span)
+echo "net.core.rmem_max=16777216" >> /etc/sysctl.conf
 
 grep -q "net.core.wmem_max" /etc/sysctl.conf || \
-echo "net.core.wmem_max=16777216" >> /etc/sysctl.conf[span_12](start_span)[span_12](end_span)
+echo "net.core.wmem_max=16777216" >> /etc/sysctl.conf
 
 sysctl -p >/dev/null 2>&1
 
@@ -183,7 +187,7 @@ Environment=ZIVPN_LOG_LEVEL=info
 
 [Install]
 WantedBy=multi-user.target
-EOF[span_13](start_span)[span_13](end_span)
+EOF
 
 # ==============================
 # IPTABLES RULE
@@ -196,7 +200,7 @@ iptables -t nat -C PREROUTING \
 -j REDIRECT --to-ports 5667 2>/dev/null || \
 iptables -t nat -A PREROUTING \
 -p udp --dport 6000:19999 \
--j REDIRECT --to-ports 5667[span_14](start_span)[span_14](end_span)
+-j REDIRECT --to-ports 5667
 
 # ==============================
 # SAVE IPTABLES
@@ -205,9 +209,9 @@ iptables -t nat -A PREROUTING \
 echo -e "${YELLOW}[*] Saving iptables rules...${NC}"
 
 DEBIAN_FRONTEND=noninteractive \
-apt-get install -y iptables-persistent >/dev/null 2>&1[span_15](start_span)[span_15](end_span)
+apt-get install -y iptables-persistent >/dev/null 2>&1
 
-netfilter-persistent save >/dev/null 2>&1[span_16](start_span)[span_16](end_span)
+netfilter-persistent save >/dev/null 2>&1
 
 # ==============================
 # ENABLE SERVICE
@@ -216,7 +220,7 @@ netfilter-persistent save >/dev/null 2>&1[span_16](start_span)[span_16](end_span
 echo -e "${YELLOW}[*] Starting service...${NC}"
 
 systemctl daemon-reload
-systemctl enable zivpn >/dev/null 2>&1[span_17](start_span)[span_17](end_span)
+systemctl enable zivpn >/dev/null 2>&1
 systemctl restart zivpn
 
 sleep 2
@@ -252,4 +256,3 @@ echo -e " Users DB       : /etc/zivpn/users.db"
 echo -e " Default User   : testuser"
 
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-
