@@ -176,41 +176,21 @@ info "Domain berhasil diset: $domain"
 sleep 2
 
 # ==========================================
-# RUN INSTALLER / MODULES ONLINE
+# DOWNLOAD ALL CONFIGS, MODULES & FILES FIRST
 # ==========================================
 
-info "Mengunduh dan memasang modul instalasi dari GitHub (ayah-alma)..."
+info "Mengunduh seluruh modul, config, dan file pendukung dari GitHub..."
 
-mkdir -p install
+mkdir -p install ssh xray wg udp tools config sshws internal/go/{dropbear-ws,stunnel-ws}
+
+# Unduh File Installer Modul
 wget -O install/nginx.sh "${REPO_URL}/install/nginx.sh"
 wget -O install/xray.sh "${REPO_URL}/install/xray.sh"
 wget -O install/ssh.sh "${REPO_URL}/install/ssh.sh"
 wget -O install/wg.sh "${REPO_URL}/install/wg.sh"
 wget -O install/zivpn.sh "${REPO_URL}/install/zivpn.sh"
 
-info "Installing NGINX Reverse Proxy..."
-bash install/nginx.sh
-
-info "Installing XRAY Core..."
-bash install/xray.sh
-
-info "Installing SSH Websocket & Tunnel..."
-bash install/ssh.sh
-
-info "Installing WireGuard..."
-bash install/wg.sh
-
-info "Installing UDP ZIVPN..."
-bash install/zivpn.sh
-
-# ==========================================
-# DOWNLOAD MENU, SUBMENU, SSHWS & CONFIG FROM GITHUB
-# ==========================================
-
-info "Mengunduh file menu, submenu, sshws, dan config dari repository ayah-alma..."
-
-mkdir -p ssh xray wg udp tools config sshws internal/go/{dropbear-ws,stunnel-ws}
-
+# Unduh File Menu & Submenu
 wget -O ssh/m-ssh "${REPO_URL}/ssh/m-ssh"
 wget -O ssh/addssh.sh "${REPO_URL}/ssh/addssh.sh"
 
@@ -228,7 +208,7 @@ wget -O tools/speedtest.sh "${REPO_URL}/tools/speedtest.sh"
 wget -O tools/domain.sh "${REPO_URL}/tools/domain.sh"
 wget -O tools/running.sh "${REPO_URL}/tools/running.sh"
 
-# Mengunduh modul SSHWS / Python & Service
+# Unduh Modul SSHWS / Python & Service
 wget -O sshws/ws-dropbear.py "${REPO_URL}/sshws/ws-dropbear.py"
 wget -O sshws/ws-stunnel.py "${REPO_URL}/sshws/ws-stunnel.py"
 wget -O sshws/udp-custom.service "${REPO_URL}/sshws/udp-custom.service"
@@ -236,7 +216,7 @@ wget -O sshws/udpgw.service "${REPO_URL}/sshws/udpgw.service"
 wget -O sshws/ws-dropbear.service "${REPO_URL}/sshws/ws-dropbear.service"
 wget -O sshws/ws-stunnel.service "${REPO_URL}/sshws/ws-stunnel.service"
 
-# Mengunduh Source Go Dropbear-WS & Stunnel-WS
+# Unduh Source Go Dropbear-WS & Stunnel-WS
 wget -O internal/go/dropbear-ws/main.go "${REPO_URL}/internal/go/dropbear-ws/main.go"
 wget -O internal/go/dropbear-ws/go.mod "${REPO_URL}/internal/go/dropbear-ws/go.mod" 2>/dev/null || true
 wget -O internal/go/stunnel-ws/main.go "${REPO_URL}/internal/go/stunnel-ws/main.go" 2>/dev/null || true
@@ -244,13 +224,35 @@ wget -O internal/go/stunnel-ws/go.mod "${REPO_URL}/internal/go/stunnel-ws/go.mod
 wget -O internal/go/dropbear-ws.service "${REPO_URL}/internal/go/dropbear-ws.service" 2>/dev/null || true
 wget -O internal/go/stunnel-ws.service "${REPO_URL}/internal/go/stunnel-ws.service" 2>/dev/null || true
 
-# Mengunduh file konfigurasi tambahan
+# Unduh File Konfigurasi Utama
 wget -O config/nginx.conf "${REPO_URL}/config/nginx.conf"
 wget -O config/issue.net "${REPO_URL}/config/issue.net"
 wget -O config/xray.json "${REPO_URL}/config/xray.json"
+wget -O config/xray.conf "${REPO_URL}/config/xray.conf" 2>/dev/null || true
 
 wget -O menu.sh "${REPO_URL}/menu.sh"
 wget -O uninstall.sh "${REPO_URL}/uninstall.sh"
+
+# ==========================================
+# RUN INSTALLER / MODULES ONLINE
+# ==========================================
+
+info "Menjalankan modul instalasi layanan..."
+
+info "Installing NGINX Reverse Proxy..."
+bash install/nginx.sh
+
+info "Installing XRAY Core..."
+bash install/xray.sh
+
+info "Installing SSH Websocket & Tunnel..."
+bash install/ssh.sh
+
+info "Installing WireGuard..."
+bash install/wg.sh
+
+info "Installing UDP ZIVPN..."
+bash install/zivpn.sh
 
 # ==========================================
 # COPY MENU COMMAND & PERMISSIONS
@@ -314,7 +316,6 @@ fi
 cp -f sshws/*.service /etc/systemd/system/ 2>/dev/null || true
 cp -f internal/go/*.service /etc/systemd/system/ 2>/dev/null || true
 
-# Backup Python script ke /usr/local/bin jika diperlukan
 if [ -f "sshws/ws-dropbear.py" ]; then
     cp sshws/ws-dropbear.py /usr/local/bin/ws-dropbear
     chmod +x /usr/local/bin/ws-dropbear
