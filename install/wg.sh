@@ -1,7 +1,7 @@
 #!/bin/bash
 # Install WireGuard + konfigurasi awal
 # By Ayah-Alma
-# Converted for Ayah-Alma Project (Fixed & Optimized)
+# Converted for Ayah-Alma Project (Kernel Module Fixed)
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -21,12 +21,20 @@ if [[ ! -d "$BASE_DIR" ]]; then
     exit 1
 fi
 
-# Install dependensi (pastikan resolvconf tidak merusak systemd)
+# Install dependensi dan pastikan modul kernel wireguard tersedia
 apt update -y
 DEBIAN_FRONTEND=noninteractive apt install -y \
     wireguard \
     wireguard-tools \
-    qrencode
+    qrencode \
+    iptables
+
+# Paksa muat modul kernel wireguard jika belum aktif
+modprobe wireguard >/dev/null 2>&1
+lsmod | grep -q wireguard || {
+    echo -e "${RED}[ERROR] Kernel WireGuard module tidak didukung oleh kernel VPS ini!${NC}"
+    exit 1
+}
 
 # Buat direktori config
 mkdir -p /etc/wireguard
@@ -53,7 +61,7 @@ if [[ -z "$interface" ]]; then
     exit 1
 fi
 
-# Buat konfigurasi wg0.conf dengan DNS eksplisit agar bebas dari error resolvconf
+# Buat konfigurasi wg0.conf
 cat > wg0.conf <<EOF
 [Interface]
 Address = 10.66.66.1/24
