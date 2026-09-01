@@ -7,19 +7,10 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-BASE_DIR="/root/ayah-alma"
-
 clear
 
 echo -e "${GREEN}▶️ Memulai instalasi WireGuard...${NC}"
 sleep 1
-
-# ================= VALIDATION =================
-
-if [[ ! -d "$BASE_DIR" ]]; then
-    echo -e "${RED}[ERROR] Repo ayah-alma not found!${NC}"
-    exit 1
-fi
 
 # Install dependensi dan pastikan modul kernel wireguard tersedia
 apt update -y
