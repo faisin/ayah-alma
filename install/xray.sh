@@ -1,13 +1,10 @@
 #!/bin/bash
-
 # Setup Xray Core + Nginx Reverse Proxy - by Ayah-Alma
 # Converted for Ayah-Alma Project
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'
-
-BASE_DIR="/root/ayah-alma"
 
 clear
 
@@ -17,24 +14,9 @@ sleep 1
 # ================= VALIDATION =================
 
 if ! command -v nginx >/dev/null 2>&1; then
-echo -e "${RED}[ERROR] NGINX not installed!${NC}"
-echo -e "${RED}Run install/nginx.sh first${NC}"
-exit 1
-fi
-
-if [[ ! -d "$BASE_DIR" ]]; then
-echo -e "${RED}[ERROR] Repo ayah-alma not found!${NC}"
-exit 1
-fi
-
-if [[ ! -f "$BASE_DIR/config/xray.json" ]]; then
-echo -e "${RED}[ERROR] xray.json not found in ayah-alma repository!${NC}"
-exit 1
-fi
-
-if [[ ! -f "$BASE_DIR/config/xray.conf" ]]; then
-echo -e "${RED}[ERROR] xray.conf not found in ayah-alma repository!${NC}"
-exit 1
+    echo -e "${RED}[ERROR] NGINX not installed!${NC}"
+    echo -e "${RED}Run install/nginx.sh first${NC}"
+    exit 1
 fi
 
 # ================= INSTALL DEPENDENCY =================
@@ -42,7 +24,7 @@ fi
 apt update -y
 
 apt install -y \
-curl wget socat cron jq unzip \
+curl wget cron jq unzip \
 gnupg coreutils lsof qrencode \
 ca-certificates
 
@@ -60,7 +42,7 @@ wget -qO /tmp/xray.zip \
 "https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip" || { 
     echo -e "${RED}[ERROR] Failed to download Xray Core!${NC}" 
     exit 1 
-    }
+}
 
 unzip -o /tmp/xray.zip -d /tmp/xray
 
@@ -72,12 +54,12 @@ rm -f /tmp/xray.zip
 # ================= DOMAIN =================
 
 if [[ -f /root/domain ]]; then
-domain=$(cat /root/domain)
+    domain=$(cat /root/domain)
 elif [[ -f /etc/xray/domain ]]; then
-domain=$(cat /etc/xray/domain)
+    domain=$(cat /etc/xray/domain)
 else
-echo -e "${RED}[ERROR] File domain not found!${NC}"
-exit 1
+    echo -e "${RED}[ERROR] File domain not found!${NC}"
+    exit 1
 fi
 
 echo "$domain" > /etc/xray/domain
@@ -90,17 +72,13 @@ systemctl restart cron
 # ================= INSTALL ACME =================
 
 if [ ! -f ~/.acme.sh/acme.sh ]; then
-
     echo -e "${GREEN}🔐 Menginstall acme.sh...${NC}"
-
     curl https://get.acme.sh | sh -s email=admin@$domain
-
 fi
 
 chmod +x ~/.acme.sh/acme.sh
 
 ~/.acme.sh/acme.sh --set-default-ca --server letsencrypt
-
 ~/.acme.sh/acme.sh --register-account -m admin@$domain || true
 
 # ================= STOP PORT 80 =================
@@ -147,14 +125,20 @@ chmod 644 /etc/xray/cert.crt
 
 # ================= XRAY CONFIG =================
 
-cp "$BASE_DIR/config/xray.json" \
-/etc/xray/config.json
+if [ -f "./config/xray.json" ]; then
+    cp ./config/xray.json /etc/xray/config.json
+elif [ -f "/root/ayah-alma/config/xray.json" ]; then
+    cp /root/ayah-alma/config/xray.json /etc/xray/config.json
+fi
 
-cp "$BASE_DIR/config/xray.conf" \
-/etc/nginx/conf.d/xray.conf
+if [ -f "./config/xray.conf" ]; then
+    cp ./config/xray.conf /etc/nginx/conf.d/xray.conf
+elif [ -f "/root/ayah-alma/config/xray.conf" ]; then
+    cp /root/ayah-alma/config/xray.conf /etc/nginx/conf.d/xray.conf
+fi
 
-chmod 644 /etc/xray/config.json
-chmod 644 /etc/nginx/conf.d/xray.conf
+chmod 644 /etc/xray/config.json 2>/dev/null || true
+chmod 644 /etc/nginx/conf.d/xray.conf 2>/dev/null || true
 
 # ================= XRAY SERVICE =================
 
@@ -196,25 +180,25 @@ systemctl daemon-reexec
 
 systemctl enable xray
 systemctl restart xray
-
 systemctl restart nginx
 
 sleep 2 
 
 if ! systemctl is-active --quiet xray; then 
-echo -e "${RED}[ERROR] XRAY failed to start!${NC}" 
-journalctl -u xray -n 20 --no-pager 
-exit 1 
+    echo -e "${RED}[ERROR] XRAY failed to start!${NC}" 
+    journalctl -u xray -n 20 --no-pager 
+    exit 1 
 fi 
 
 if ! systemctl is-active --quiet nginx; then 
-echo -e "${RED}[ERROR] NGINX failed to start!${NC}" 
-journalctl -u nginx -n 20 --no-pager 
-exit 1 
+    echo -e "${RED}[ERROR] NGINX failed to start!${NC}" 
+    journalctl -u nginx -n 20 --no-pager 
+    exit 1 
 fi
 
 # ================= INSTALL LOG =================
 
+touch /root/log-install.txt
 cat >> /root/log-install.txt <<EOF
 
 ━━━━━━━━━━━━━━━━━━━━━━
