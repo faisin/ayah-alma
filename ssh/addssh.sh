@@ -10,35 +10,56 @@ DOMAIN="$IP"
 fi
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "      CREATE SSH ACCOUNT"
+echo "      MENU SSH ACCOUNT"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+echo "  1. Buat Akun SSH Reguler"
+echo "  2. Buat Akun SSH Trial (1 Hari)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+read -p "Pilih menu [1-2]: " menu_pilihan
 
-read -p "Username      : " user
-
-if id "$user" &>/dev/null; then
-echo ""
-echo "[ ERROR ] User already exists!"
-echo ""
-exit 1
-fi
-
-read -s -p "Password      : " pass
-echo ""
-
-read -p "Expired Days  : " days
-
-if ! [[ "$days" =~ ^[0-9]+$ ]]; then
-echo ""
-echo "[ ERROR ] Invalid expiration days!"
-echo ""
-exit 1
-fi
-
-read -p "Limit Device  : " limit_device
-
-if ! [[ "$limit_device" =~ ^[0-9]+$ ]]; then
+if [[ "$menu_pilihan" == "2" ]]; then
+    user="trial-$(</dev/urandom tr -dc 'a-z0-9' | head -c 4)"
+    pass="$user"
+    days="1"
     limit_device="1"
+    
+    while id "$user" &>/dev/null; do
+        user="trial-$(</dev/urandom tr -dc 'a-z0-9' | head -c 4)"
+        pass="$user"
+    done
+else
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "      CREATE SSH ACCOUNT"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+
+    read -p "Username      : " user
+
+    if id "$user" &>/dev/null; then
+    echo ""
+    echo "[ ERROR ] User already exists!"
+    echo ""
+    exit 1
+    fi
+
+    read -s -p "Password      : " pass
+    echo ""
+
+    read -p "Expired Days  : " days
+
+    if ! [[ "$days" =~ ^[0-9]+$ ]]; then
+    echo ""
+    echo "[ ERROR ] Invalid expiration days!"
+    echo ""
+    exit 1
+    fi
+
+    read -p "Limit Device  : " limit_device
+
+    if ! [[ "$limit_device" =~ ^[0-9]+$ ]]; then
+        limit_device="1"
+    fi
 fi
 
 EXP=$(date -d "$days days" +%Y-%m-%d)
