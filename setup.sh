@@ -244,57 +244,32 @@ wget -O menu.sh "${REPO_URL}/menu.sh"
 wget -O uninstall.sh "${REPO_URL}/uninstall.sh"
 
 # ==========================================
-# COPY MENU COMMAND
+# COPY MENU COMMAND & PERMISSIONS
 # ==========================================
 
-info "Menyalin command menu..."
+info "Menyalin command menu dan mengatur izin akses..."
 
 cp -f ssh/m-ssh /usr/bin/
-
 cp -f xray/m-vmess /usr/bin/
 cp -f xray/m-vless /usr/bin/
 cp -f xray/m-trojan /usr/bin/
 cp -f xray/m-ssws /usr/bin/
-
 cp -f wg/m-wg /usr/bin/
-
 cp -f udp/m-zivpn /usr/bin/
-
 cp -f tools/tools-menu /usr/bin/
-
 cp -f tools/backup.sh /usr/bin/
 cp -f tools/speedtest.sh /usr/bin/
 cp -f tools/domain.sh /usr/bin/
 cp -f tools/running.sh /usr/bin/
-
 cp -f menu.sh /usr/bin/menu
 
-# ==========================================
-# SET PERMISSION
-# ==========================================
-
-chmod +x /usr/bin/menu
-
-chmod +x /usr/bin/m-ssh
-chmod +x /usr/bin/m-vmess
-chmod +x /usr/bin/m-vless
-chmod +x /usr/bin/m-trojan
-chmod +x /usr/bin/m-ssws
-chmod +x /usr/bin/m-wg
-chmod +x /usr/bin/m-zivpn
-
-chmod +x /usr/bin/tools-menu
-chmod +x /usr/bin/backup.sh
-chmod +x /usr/bin/speedtest.sh
-chmod +x /usr/bin/domain.sh
-chmod +x /usr/bin/running.sh
+chmod +x /usr/bin/menu /usr/bin/m-ssh /usr/bin/m-vmess /usr/bin/m-vless /usr/bin/m-trojan /usr/bin/m-ssws /usr/bin/m-wg /usr/bin/m-zivpn /usr/bin/tools-menu /usr/bin/backup.sh /usr/bin/speedtest.sh /usr/bin/domain.sh /usr/bin/running.sh
 
 # ==========================================
 # COPY RUNTIME SCRIPT TO /etc/ayah-alma/
 # ==========================================
 
-info "Menyalin semua submenu dan config ke /etc/ayah-alma/..."
-
+mkdir -p /etc/ayah-alma/{ssh,xray,wg,udp,tools,config,sshws}
 cp -r ssh/* /etc/ayah-alma/ssh/
 cp -r xray/* /etc/ayah-alma/xray/
 cp -r wg/* /etc/ayah-alma/wg/
@@ -303,21 +278,34 @@ cp -r tools/* /etc/ayah-alma/tools/
 cp -r config/* /etc/ayah-alma/config/
 cp -r sshws/* /etc/ayah-alma/sshws/
 
-chmod +x /etc/ayah-alma/*/*.sh
+chmod +x /etc/ayah-alma/*/*.sh 2>/dev/null || true
 
 # ==========================================
-# COPY & ENABLE SYSTEMD SERVICES
+# COPY & ENABLE SYSTEMD SERVICES (PASTIKAN BINARY SUDAH SIAP)
 # ==========================================
 
-info "Memasang dan mengaktifkan service systemd..."
+info "Memasang dan mengaktifkan service systemd secara aman..."
 
 cp -f sshws/*.service /etc/systemd/system/ 2>/dev/null || true
 cp -f internal/go/*.service /etc/systemd/system/ 2>/dev/null || true
 
+# Salin juga skrip python ws ke /usr/local/bin agar path ExecStart valid
+if [ -f "sshws/ws-dropbear.py" ]; then
+    cp sshws/ws-dropbear.py /usr/local/bin/ws-dropbear
+    chmod +x /usr/local/bin/ws-dropbear
+fi
+
+if [ -f "sshws/ws-stunnel.py" ]; then
+    cp sshws/ws-stunnel.py /usr/local/bin/ws-stunnel
+    chmod +x /usr/local/bin/ws-stunnel
+fi
+
 systemctl daemon-reload
 
-systemctl enable xray nginx dropbear wg-quick@wg0 udp-custom zivpn ws-dropbear ws-stunnel udpgw 2>/dev/null || true
-systemctl start xray nginx dropbear wg-quick@wg0 udp-custom zivpn ws-dropbear ws-stunnel udpgw 2>/dev/null || true
+for svc in xray nginx dropbear wg-quick@wg0 udp-custom zivpn ws-dropbear ws-stunnel udpgw; do
+    systemctl enable "$svc" 2>/dev/null || true
+    systemctl restart "$svc" 2>/dev/null || true
+done
 
 # ==========================================
 # AUTO MENU LOGIN
