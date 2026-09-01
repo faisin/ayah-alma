@@ -41,7 +41,7 @@ bash /etc/ayah-alma/ssh/addssh.sh
 
 2)
 clear
-echo "Trial SSH - Coming Soon"
+bash /etc/ayah-alma/ssh/trialssh.sh
 ;;
 
 3)
