@@ -22,6 +22,13 @@ done
 
 read -rp "Expired (days): " masaaktif
 
+# --- TAMBAHAN INPUT LIMIT DEVICE ---
+read -rp "Limit Device (Contoh: 2): " limit_device
+if [[ -z "$limit_device" ]]; then
+    limit_device="1"
+fi
+# ----------------------------------
+
 uuid=$(cat /proc/sys/kernel/random/uuid)
 exp=$(date -d "$masaaktif days" +"%Y-%m-%d")
 
@@ -116,8 +123,8 @@ if ! systemctl is-active --quiet xray; then
 
 fi
 
-# simpan database user
-echo "${user} ${exp} ${uuid}" >> /etc/xray/vmess.db
+# simpan database user (termasuk limit device)
+echo "${user} ${exp} ${uuid} ${limit_device}" >> /etc/xray/vmess.db
 
 # generate vmess tls
 vmess_json_tls=$(cat <<EOF
@@ -193,6 +200,7 @@ echo -e "Port none TLS  : ${none}"
 echo -e "Port gRPC      : ${grpc}"
 echo -e "UUID           : ${uuid}"
 echo -e "Alter ID       : 0"
+echo -e "Limit Device   : ${limit_device}"
 echo -e "Encryption     : auto"
 echo -e "Network        : ws / grpc"
 echo -e "Path           : /vmess"
