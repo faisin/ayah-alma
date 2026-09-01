@@ -6,24 +6,10 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-BASE_DIR="/root/ayah-alma"
-
 clear
 
 echo -e "${GREEN}▶️ Installing SSH + WebSocket + UDP Custom...${NC}"
 sleep 1
-
-# ================= VALIDATION =================
-
-if [[ ! -d "$BASE_DIR" ]]; then
-    echo -e "${RED}[ERROR] Repo ayah-alma not found!${NC}"
-    exit 1
-fi
-
-if [[ ! -f "$BASE_DIR/config/issue.net" ]]; then
-    echo -e "${RED}[ERROR] issue.net not found in ayah-alma repository!${NC}"
-    exit 1
-fi
 
 # ================= INSTALL DEPENDENCY =================
 
@@ -68,7 +54,14 @@ if [ ! -f /etc/dropbear/dropbear_ecdsa_host_key ]; then
     dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key >/dev/null 2>&1
 fi
 
-cp "$BASE_DIR/config/issue.net" /etc/issue.net
+# AMBIL ISSUE.NET DARI BERBAGAI ALTERNATIF DIREKTORI
+if [ -f "./config/issue.net" ]; then
+    cp ./config/issue.net /etc/issue.net
+elif [ -f "/root/ayah-alma/config/issue.net" ]; then
+    cp /root/ayah-alma/config/issue.net /etc/issue.net
+else
+    echo "Server SSH Ayah-Alma" > /etc/issue.net
+fi
 chmod 644 /etc/issue.net
 
 cat > /etc/systemd/system/dropbear.service <<EOF
@@ -94,22 +87,36 @@ if ! command -v go >/dev/null 2>&1; then
     apt install -y golang-go
 fi
 
-if [ -d "$BASE_DIR/internal/go" ]; then
-    cd "$BASE_DIR/internal/go" || true
+# Tentukan base direktori secara dinamis
+if [ -d "./internal/go" ]; then
+    GO_DIR="./internal/go"
+elif [ -d "/root/ayah-alma/internal/go" ]; then
+    GO_DIR="/root/ayah-alma/internal/go"
+else
+    GO_DIR=""
+fi
+
+if [ -n "$GO_DIR" ]; then
+    cd "$GO_DIR" || true
     
     go build -ldflags="-s -w" -o /usr/local/bin/dropbearws ./dropbear-ws 2>/dev/null || true
     go build -ldflags="-s -w" -o /usr/local/bin/stunnelws ./stunnel-ws 2>/dev/null || true
     
     chmod +x /usr/local/bin/dropbearws 2>/dev/null || true
     chmod +x /usr/local/bin/stunnelws 2>/dev/null || true
+    cd - >/dev/null
 fi
 
-if [ -f "$BASE_DIR/internal/go/dropbear-ws.service" ]; then
-    cp "$BASE_DIR/internal/go/dropbear-ws.service" /etc/systemd/system/dropbear-ws.service
+if [ -f "$GO_DIR/dropbear-ws.service" ]; then
+    cp "$GO_DIR/dropbear-ws.service" /etc/systemd/system/dropbear-ws.service
+elif [ -f "sshws/ws-dropbear.service" ]; then
+    cp sshws/ws-dropbear.service /etc/systemd/system/dropbear-ws.service
 fi
 
-if [ -f "$BASE_DIR/internal/go/stunnel-ws.service" ]; then
-    cp "$BASE_DIR/internal/go/stunnel-ws.service" /etc/systemd/system/stunnel-ws.service
+if [ -f "$GO_DIR/stunnel-ws.service" ]; then
+    cp "$GO_DIR/stunnel-ws.service" /etc/systemd/system/stunnel-ws.service
+elif [ -f "sshws/ws-stunnel.service" ]; then
+    cp sshws/ws-stunnel.service /etc/systemd/system/stunnel-ws.service
 fi
 
 # ================= INSTALL BADVPN UDPGW =================
@@ -118,13 +125,18 @@ echo ""
 echo -e "${GREEN}[INFO] Installing BadVPN UDPGW...${NC}"
 echo ""
 
-if [ -f "$BASE_DIR/bin/badvpn-udpgw" ]; then
-    cp "$BASE_DIR/bin/badvpn-udpgw" /usr/local/bin/badvpn-udpgw
+if [ -f "./bin/badvpn-udpgw" ]; then
+    cp ./bin/badvpn-udpgw /usr/local/bin/badvpn-udpgw
+    chmod +x /usr/local/bin/badvpn-udpgw
+elif [ -f "/root/ayah-alma/bin/badvpn-udpgw" ]; then
+    cp /root/ayah-alma/bin/badvpn-udpgw /usr/local/bin/badvpn-udpgw
     chmod +x /usr/local/bin/badvpn-udpgw
 fi
 
-if [ -f "$BASE_DIR/sshws/udpgw.service" ]; then
-    cp "$BASE_DIR/sshws/udpgw.service" /etc/systemd/system/
+if [ -f "sshws/udpgw.service" ]; then
+    cp sshws/udpgw.service /etc/systemd/system/
+elif [ -f "/root/ayah-alma/sshws/udpgw.service" ]; then
+    cp /root/ayah-alma/sshws/udpgw.service /etc/systemd/system/
 fi
 
 # ================= INSTALL UDP CUSTOM =================
@@ -133,20 +145,27 @@ echo ""
 echo -e "${GREEN}[INFO] Installing UDP Custom...${NC}"
 echo ""
 
-if [ -f "$BASE_DIR/bin/udp-custom" ]; then
-    cp "$BASE_DIR/bin/udp-custom" /usr/local/bin/udp-custom
+if [ -f "./bin/udp-custom" ]; then
+    cp ./bin/udp-custom /usr/local/bin/udp-custom
+    chmod +x /usr/local/bin/udp-custom
+elif [ -f "/root/ayah-alma/bin/udp-custom" ]; then
+    cp /root/ayah-alma/bin/udp-custom /usr/local/bin/udp-custom
     chmod +x /usr/local/bin/udp-custom
 fi
 
 mkdir -p /etc/udp-custom
-if [ -f "$BASE_DIR/config/udp-custom.json" ]; then
-    cp "$BASE_DIR/config/udp-custom.json" /etc/udp-custom/config.json
-elif [ -f "$BASE_DIR/config/udp-cuatom.json" ]; then
-    cp "$BASE_DIR/config/udp-cuatom.json" /etc/udp-custom/config.json
+if [ -f "./config/udp-custom.json" ]; then
+    cp ./config/udp-custom.json /etc/udp-custom/config.json
+elif [ -f "/root/ayah-alma/config/udp-custom.json" ]; then
+    cp /root/ayah-alma/config/udp-custom.json /etc/udp-custom/config.json
+elif [ -f "./config/udp-cuatom.json" ]; then
+    cp ./config/udp-cuatom.json /etc/udp-custom/config.json
 fi
 
-if [ -f "$BASE_DIR/sshws/udp-custom.service" ]; then
-    cp "$BASE_DIR/sshws/udp-custom.service" /etc/systemd/system/
+if [ -f "sshws/udp-custom.service" ]; then
+    cp sshws/udp-custom.service /etc/systemd/system/
+elif [ -f "/root/ayah-alma/sshws/udp-custom.service" ]; then
+    cp /root/ayah-alma/sshws/udp-custom.service /etc/systemd/system/
 fi
 
 # ================= PERMISSION & SYSTEMD RELOAD =================
@@ -189,6 +208,7 @@ chmod +x /etc/profile.d/no-login.sh
 
 # ================= INSTALL LOG =================
 
+touch /root/log-install.txt
 cat >> /root/log-install.txt <<EOF
 
 ━━━━━━━━━━━━━━━━━━━━━━
