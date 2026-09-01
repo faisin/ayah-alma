@@ -9,20 +9,17 @@ if [[ -z "$DOMAIN" ]]; then
 DOMAIN="$IP"
 fi
 
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "      CREATE TRIAL SSH"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-# Membuat username acak otomatis (contoh: trial-xxxx)
+# Generate random username & password untuk trial (contoh: trial-abcd)
 user="trial-$(</dev/urandom tr -dc 'a-z0-9' | head -c 4)"
-
-# Password otomatis disamakan dengan username agar praktis
 pass="$user"
-
-# Masa aktif trial otomatis 1 hari
 days="1"
 limit_device="1"
+
+# Memastikan username unik (belum ada di sistem)
+while id "$user" &>/dev/null; do
+    user="trial-$(</dev/urandom tr -dc 'a-z0-9' | head -c 4)"
+    pass="$user"
+done
 
 EXP=$(date -d "$days days" +%Y-%m-%d)
 
@@ -43,17 +40,16 @@ echo "$user:$pass" | chpasswd || {
 }
 
 mkdir -p /root/accounts
-
 ACCOUNT_FILE="/root/accounts/${user}.txt"
 
-cat > "$ACCOUNT_FILE" <<'EOF_TEXT'
+cat > "$ACCOUNT_FILE" <<EOF
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-SSH TRIAL ACCOUNT
+SSH TRIAL ACCOUNT (1 DAY)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Username     : $user
 Password     : $pass
-Expired      : $EXP (1 Hari)
+Expired      : $EXP
 Limit Device : $limit_device
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -87,13 +83,7 @@ SSH WSS
 $DOMAIN:2096@$user:$pass
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Payload WSS / WS
-
-GET /ssh-wss HTTP/1.1[crlf]Host: $DOMAIN[crlf]Upgrade: websocket[crlf]Connection: Upgrade[crlf][crlf]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-EOF_TEXT
+EOF
 
 clear
 
@@ -130,13 +120,7 @@ echo "SSH WSS"
 echo "$DOMAIN:2096@$user:$pass"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Payload WSS / WS"
-echo ""
-echo "GET /ssh-wss HTTP/1.1[crlf]Host: $DOMAIN[crlf]Upgrade: websocket[crlf]Connection: Upgrade[crlf][crlf]"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "Saved To:"
 echo "$ACCOUNT_FILE"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-
