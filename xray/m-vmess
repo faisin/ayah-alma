@@ -10,14 +10,14 @@ clear
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${CYAN}              ⚙️ MENU VMESS XRAY              ${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${GREEN}[1]${NC} Tambah Akun VMess[span_2](start_span)"[span_2](end_span)
-echo -e "${GREEN}[2]${NC} Hapus Akun VMess[span_3](start_span)"[span_3](end_span)
-echo -e "${GREEN}[3]${NC} Cek Login VMess[span_4](start_span)"[span_4](end_span)
-echo -e "${GREEN}[4]${NC} Perpanjang Masa Aktif Akun[span_5](start_span)"[span_5](end_span)
-echo -e "${GREEN}[x]${NC} Kembali ke menu utama[span_6](start_span)"[span_6](end_span)
+echo -e "${GREEN}[1]${NC} Tambah Akun VMess"
+echo -e "${GREEN}[2]${NC} Hapus Akun VMess"
+echo -e "${GREEN}[3]${NC} Cek Login VMess"
+echo -e "${GREEN}[4]${NC} Perpanjang Masa Aktif Akun"
+echo -e "${GREEN}[x]${NC} Kembali ke menu utama"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-read -p "👉 Pilih opsi: " opt[span_7](start_span)[span_7](end_span)
+read -p "👉 Pilih opsi: " opt
 
 case $opt in
 1)
@@ -41,8 +41,8 @@ menu
 ;;
 
 *)
-echo "❌ Pilihan salah[span_8](start_span)!"[span_8](end_span)
-sleep 1[span_9](start_span)[span_9](end_span)
-exec m-vmess[span_10](start_span)[span_10](end_span)
+echo "❌ Pilihan salah!"
+sleep 1
+exec m-vmess
 ;;
 esac
