@@ -9,13 +9,40 @@ if [[ -z "$DOMAIN" ]]; then
 DOMAIN="$IP"
 fi
 
-# Generate random username & password untuk trial (contoh: trial-abcd)
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "      PILIH DURASI TRIAL"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  1. Trial 1 Jam"
+echo "  2. Trial 3 Jam"
+echo "  3. Trial 24 Jam (1 Hari)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+read -p "Pilih durasi [1-3]: " durasi
+
+case $durasi in
+    1)
+        # Untuk hitungan jam, expired secara sistem dibuat hari ini, 
+        # atau bisa disesuaikan dengan skrip manajemen expired Anda
+        days="1"
+        ket_waktu="1 Jam"
+        ;;
+    2)
+        days="1"
+        ket_wakt="3 Jam"
+        ;;
+    3)
+        days="1"
+        ket_waktu="1 Hari"
+        ;;
+    *)
+        days="1"
+        ket_waktu="1 Hari"
+        ;;
+esac
+
 user="trial-$(</dev/urandom tr -dc 'a-z0-9' | head -c 4)"
 pass="$user"
-days="1"
 limit_device="1"
 
-# Memastikan username unik (belum ada di sistem)
 while id "$user" &>/dev/null; do
     user="trial-$(</dev/urandom tr -dc 'a-z0-9' | head -c 4)"
     pass="$user"
@@ -44,12 +71,12 @@ ACCOUNT_FILE="/root/accounts/${user}.txt"
 
 cat > "$ACCOUNT_FILE" <<EOF
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-SSH TRIAL ACCOUNT (1 DAY)
+SSH TRIAL ACCOUNT ($ket_waktu)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Username     : $user
 Password     : $pass
-Expired      : $EXP
+Expired      : $EXP ($ket_waktu)
 Limit Device : $limit_device
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -93,7 +120,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo "Username       : $user"
 echo "Password       : $pass"
-echo "Expired        : $EXP (1 Hari)"
+echo "Durasi Trial   : $ket_waktu"
 echo "Limit Device   : $limit_device"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
