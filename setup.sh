@@ -183,10 +183,15 @@ info "Mengunduh seluruh modul, config, dan file pendukung dari GitHub..."
 
 mkdir -p install ssh xray wg tools config sshws bin internal/go/{dropbear-ws,stunnel-ws}
 
-# Unduh File Binary Pendukung (Tanpa Zivpn)
-wget -O bin/udp-custom "${REPO_URL}/bin/udp-custom" 2>/dev/null || true
-wget -O bin/badvpn-udpgw "${REPO_URL}/bin/badvpn-udpgw" 2>/dev/null || true
-chmod +x bin/* 2>/dev/null || true
+# Unduh File Binary & Konfigurasi Utama dari folder config GitHub
+wget -O /usr/local/bin/udp-custom "${REPO_URL}/config/udp-custom" 2>/dev/null || true
+chmod +x /usr/local/bin/udp-custom
+
+wget -O config/udp-custom.json "${REPO_URL}/config/udp-custom.json" 2>/dev/null || true
+wget -O config/nginx.conf "${REPO_URL}/config/nginx.conf"
+wget -O config/issue.net "${REPO_URL}/config/issue.net"
+wget -O config/xray.json "${REPO_URL}/config/xray.json"
+wget -O config/xray.conf "${REPO_URL}/config/xray.conf" 2>/dev/null || true
 
 # Unduh File Installer Modul
 wget -O install/nginx.sh "${REPO_URL}/install/nginx.sh"
@@ -227,12 +232,6 @@ wget -O internal/go/stunnel-ws/go.mod "${REPO_URL}/internal/go/stunnel-ws/go.mod
 wget -O internal/go/dropbear-ws.service "${REPO_URL}/internal/go/dropbear-ws.service" 2>/dev/null || true
 wget -O internal/go/stunnel-ws.service "${REPO_URL}/internal/go/stunnel-ws/stunnel-ws.service" 2>/dev/null || true
 
-# Unduh File Konfigurasi Utama
-wget -O config/nginx.conf "${REPO_URL}/config/nginx.conf"
-wget -O config/issue.net "${REPO_URL}/config/issue.net"
-wget -O config/xray.json "${REPO_URL}/config/xray.json"
-wget -O config/xray.conf "${REPO_URL}/config/xray.conf" 2>/dev/null || true
-
 wget -O menu.sh "${REPO_URL}/menu.sh"
 wget -O uninstall.sh "${REPO_URL}/uninstall.sh"
 
@@ -269,6 +268,7 @@ cp -f wg/m-wg /usr/bin/
 cp -f tools/tools-menu /usr/bin/
 cp -f tools/backup.sh /usr/bin/
 cp -f tools/speedtest.sh /usr/bin/
+cp -f tools/domain.sh /usr/bin/
 cp -f tools/domain.sh /usr/bin/
 cp -f tools/running.sh /usr/bin/
 cp -f menu.sh /usr/bin/menu
