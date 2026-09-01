@@ -1,14 +1,13 @@
 [Unit]
-Description=SSH WebSocket Dropbear Service - by Ayah Alma[span_3](start_span)[span_3](end_span)
-After=network.target[span_4](start_span)[span_4](end_span)
+Description=SSH WebSocket Dropbear Service - by Ayah Alma
+After=network.target
 
 [Service]
-Type=simple[span_5](start_span)[span_5](end_span)
+Type=simple
 User=root
-ExecStart=/usr/bin/python3 /usr/local/bin/ws-dropbear 2082[span_6](start_span)[span_6](end_span)
-Restart=always[span_7](start_span)[span_7](end_span)
+ExecStart=/usr/bin/python3 /usr/local/bin/ws-dropbear.py 2082
+Restart=always
 RestartSec=5
 
 [Install]
-WantedBy=multi-user.target[span_8](start_span)[span_8](end_span)
-
+WantedBy=multi-user.target
