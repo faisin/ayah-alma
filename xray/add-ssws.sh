@@ -30,6 +30,13 @@ fi
 
 read -rp "Expired (days): " masaaktif
 
+# --- TAMBAHAN INPUT LIMIT DEVICE ---
+read -rp "Limit Device (Contoh: 2): " limit_device
+if [[ -z "$limit_device" ]]; then
+    limit_device="1"
+fi
+# ----------------------------------
+
 cipher="aes-128-gcm"
 uuid=$(cat /proc/sys/kernel/random/uuid)
 exp=$(date -d "$masaaktif days" +"%Y-%m-%d")
@@ -128,8 +135,8 @@ if ! systemctl is-active --quiet xray; then
 
 fi
 
-# simpan database user
-echo "${user} ${exp} ${uuid}" >> /etc/xray/ssws.db
+# simpan database user (termasuk limit device)
+echo "${user} ${exp} ${uuid} ${limit_device}" >> /etc/xray/ssws.db
 
 # encode password
 ss_base64=$(echo -n "${cipher}:${uuid}" | base64 -w 0)
@@ -155,6 +162,7 @@ echo -e "Port No TLS   : ${port_none}"
 echo -e "Port gRPC     : ${port_grpc}"
 echo -e "Password      : ${uuid}"
 echo -e "Cipher        : ${cipher}"
+echo -e "Limit Device  : ${limit_device}"
 echo -e "Network       : ws / grpc"
 echo -e "Path          : /ss-ws"
 echo -e "ServiceName   : ss-grpc"
