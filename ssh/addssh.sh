@@ -16,8 +16,6 @@ echo ""
 
 read -p "Username      : " user
 
-# CHECK USER
-
 if id "$user" &>/dev/null; then
 echo ""
 echo "[ ERROR ] User already exists!"
@@ -37,17 +35,13 @@ echo ""
 exit 1
 fi
 
-# --- TAMBAHAN INPUT LIMIT DEVICE ---
 read -p "Limit Device  : " limit_device
 
 if ! [[ "$limit_device" =~ ^[0-9]+$ ]]; then
     limit_device="1"
 fi
-# ----------------------------------
 
 EXP=$(date -d "$days days" +%Y-%m-%d)
-
-# CREATE USER
 
 useradd \
     -e "$EXP" \
