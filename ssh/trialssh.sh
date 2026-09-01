@@ -2,13 +2,7 @@
 
 clear
 
-DOMAIN=$(cat /etc/xray/domain 2>/dev/null)
-IP=$(curl -s ipv4.icanhazip.com)
-
-if [[ -z "$DOMAIN" ]]; then
-DOMAIN="$IP"
-fi
-
+# TAMPILKAN MENU TERLEBIH DAHULU AGAR TIDAK ADA JEDA/BLANK
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "      PILIH DURASI TRIAL"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -18,16 +12,15 @@ echo "  3. Trial 24 Jam (1 Hari)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 read -p "Pilih durasi [1-3]: " durasi
 
+# SETELAH INPUT, BARU SISTEM MEMPROSES DATA
 case $durasi in
     1)
-        # Untuk hitungan jam, expired secara sistem dibuat hari ini, 
-        # atau bisa disesuaikan dengan skrip manajemen expired Anda
         days="1"
         ket_waktu="1 Jam"
         ;;
     2)
         days="1"
-        ket_wakt="3 Jam"
+        ket_waktu="3 Jam"
         ;;
     3)
         days="1"
@@ -39,6 +32,19 @@ case $durasi in
         ;;
 esac
 
+echo ""
+echo "Mohon tunggu, sedang memproses akun trial..."
+echo ""
+
+# AMBIL DATA DOMAIN & IP (Diberi batasan waktu agar tidak error/hang)
+DOMAIN=$(cat /etc/xray/domain 2>/dev/null)
+IP=$(curl -s --max-time 3 ipv4.icanhazip.com)
+
+if [[ -z "$DOMAIN" ]]; then
+DOMAIN="$IP"
+fi
+
+# GENERATE USER & PASSWORD
 user="trial-$(</dev/urandom tr -dc 'a-z0-9' | head -c 4)"
 pass="$user"
 limit_device="1"
