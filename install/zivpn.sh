@@ -11,8 +11,6 @@ YELLOW='\033[1;33m'
 CYAN='\033[1;36m'
 NC='\033[0m'
 
-BASE_DIR="/root/ayah-alma"
-
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${GREEN}     INSTALL UDP ZIVPN${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -20,17 +18,12 @@ echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━�
 sleep 1
 
 # ==============================
-# CHECK ROOT & REPO
+# CHECK ROOT
 # ==============================
 
 if [[ $EUID -ne 0 ]]; then
    echo -e "${RED}Please run as root!${NC}"
    exit 1
-fi
-
-if [[ ! -d "$BASE_DIR" ]]; then
-    echo -e "${RED}[ERROR] Repo ayah-alma not found!${NC}"
-    exit 1
 fi
 
 # ==============================
@@ -67,8 +60,11 @@ systemctl stop zivpn >/dev/null 2>&1
 
 echo -e "${YELLOW}[*] Setting up ZIVPN binary...${NC}"
 
-if [ -f "$BASE_DIR/bin/zivpn" ]; then
-    cp "$BASE_DIR/bin/zivpn" /usr/local/bin/zivpn
+if [ -f "./bin/zivpn" ]; then
+    cp ./bin/zivpn /usr/local/bin/zivpn
+    chmod +x /usr/local/bin/zivpn
+elif [ -f "/root/ayah-alma/bin/zivpn" ]; then
+    cp /root/ayah-alma/bin/zivpn /usr/local/bin/zivpn
     chmod +x /usr/local/bin/zivpn
 else
     wget -q -O /usr/local/bin/zivpn \
@@ -106,8 +102,10 @@ mkdir -p /etc/zivpn
 # CREATE USERS DB
 # ==============================
 
-if [[ -f "$BASE_DIR/config/zivpn_users.db" ]]; then
-    cp "$BASE_DIR/config/zivpn_users.db" /etc/zivpn/users.db
+if [[ -f "./config/zivpn_users.db" ]]; then
+    cp ./config/zivpn_users.db /etc/zivpn/users.db
+elif [[ -f "/root/ayah-alma/config/zivpn_users.db" ]]; then
+    cp /root/ayah-alma/config/zivpn_users.db /etc/zivpn/users.db
 else
     touch /etc/zivpn/users.db
     echo "testuser" > /etc/zivpn/users.db
