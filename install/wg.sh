@@ -1,7 +1,7 @@
 #!/bin/bash
 # Install WireGuard + konfigurasi awal
 # By Ayah-Alma
-# Converted for Ayah-Alma Project
+# Converted for Ayah-Alma Project (Fixed & Optimized)
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -21,18 +21,19 @@ if [[ ! -d "$BASE_DIR" ]]; then
     exit 1
 fi
 
-# Install dependensi
+# Install dependensi (pastikan resolvconf tidak merusak systemd)
 apt update -y
-
-apt install -y \
+DEBIAN_FRONTEND=noninteractive apt install -y \
     wireguard \
     wireguard-tools \
-    qrencode \
-    resolvconf
+    qrencode
 
 # Buat direktori config
 mkdir -p /etc/wireguard
 cd /etc/wireguard || exit
+
+# Hapus key lama jika ada untuk mencegah konflik
+rm -f private.key public.key wg0.conf
 
 # Generate key
 privkey=$(wg genkey)
@@ -52,16 +53,19 @@ if [[ -z "$interface" ]]; then
     exit 1
 fi
 
-# Buat konfigurasi wg0.conf
+# Buat konfigurasi wg0.conf dengan DNS eksplisit agar bebas dari error resolvconf
 cat > wg0.conf <<EOF
 [Interface]
 Address = 10.66.66.1/24
 ListenPort = 51820
 PrivateKey = $privkey
+DNS = 1.1.1.1, 8.8.8.8
 PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -A FORWARD -o wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o $interface -j MASQUERADE
 PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -D FORWARD -o wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o $interface -j MASQUERADE
 SaveConfig = true
 EOF
+
+chmod 600 wg0.conf
 
 # Aktifkan IP forwarding
 cat > /etc/sysctl.d/30-wg.conf <<EOF
@@ -71,24 +75,25 @@ EOF
 sysctl --system >/dev/null 2>&1
 
 # === TESTING CONFIG
-
 wg-quick strip wg0 >/dev/null 2>&1 || {
     echo -e "${RED}[ERROR] Invalid WireGuard configuration!${NC}"
     exit 1
 }
 
-# Enable dan start service
+# Hentikan dulu jika service sempat tersangkut
+systemctl stop wg-quick@wg0 >/dev/null 2>&1
 
+# Enable dan start service
 systemctl enable wg-quick@wg0
 systemctl start wg-quick@wg0
 
 sleep 2
 
-systemctl is-active --quiet wg-quick@wg0 || {
+if ! systemctl is-active --quiet wg-quick@wg0; then
     echo -e "${RED}[ERROR] WireGuard failed to start!${NC}"
     journalctl -u wg-quick@wg0 -n 20 --no-pager
     exit 1
-}
+fi
 
 # Tambahkan ke /root/log-install.txt
 touch /root/log-install.txt
@@ -96,4 +101,3 @@ grep -q "WireGuard" /root/log-install.txt || \
 echo "WireGuard (Ayah-Alma) : 51820" >> /root/log-install.txt
 
 echo -e "${GREEN}✅ WireGuard berhasil di-install & aktif di port 51820!${NC}"
-
