@@ -1,7 +1,7 @@
 #!/bin/bash
 # ==========================================
 # Setup Script AYAH-ALMA (XRAY_AIO)
-# XRAY + WireGuard + UDP Custom + SSHWS
+# XRAY + WireGuard + UDP Custom + UDP ZIVPN + SSHWS
 # ==========================================
 
 echo "" > /root/log-install.txt
@@ -87,7 +87,7 @@ fi
 mkdir -p /etc/xray
 mkdir -p /etc/v2ray
 mkdir -p /var/lib
-mkdir -p /etc/ayah-alma/{ssh,xray,wg,tools,config,sshws,internal/go}
+mkdir -p /etc/ayah-alma/{ssh,xray,wg,udp,tools,config,sshws,internal/go}
 
 for file in domain scdomain; do
     touch /etc/xray/$file
@@ -181,9 +181,9 @@ sleep 2
 
 info "Mengunduh seluruh modul, config, dan file pendukung dari GitHub..."
 
-mkdir -p install ssh xray wg tools config sshws bin internal/go/{dropbear-ws,stunnel-ws}
+mkdir -p install ssh xray wg udp tools config sshws bin internal/go/{dropbear-ws,stunnel-ws}
 
-# Unduh File Binary & Konfigurasi Utama dari folder config GitHub
+# Unduh File Binary & Konfigurasi Utama
 wget -O /usr/local/bin/udp-custom "${REPO_URL}/config/udp-custom" 2>/dev/null || true
 chmod +x /usr/local/bin/udp-custom
 
@@ -192,12 +192,14 @@ wget -O config/nginx.conf "${REPO_URL}/config/nginx.conf"
 wget -O config/issue.net "${REPO_URL}/config/issue.net"
 wget -O config/xray.json "${REPO_URL}/config/xray.json"
 wget -O config/xray.conf "${REPO_URL}/config/xray.conf" 2>/dev/null || true
+wget -O config/zivpn_users.db "${REPO_URL}/config/zivpn_users.db" 2>/dev/null || true
 
-# Unduh File Installer Modul
+# Unduh File Installer Modul (Termasuk ZIVPN)
 wget -O install/nginx.sh "${REPO_URL}/install/nginx.sh"
 wget -O install/xray.sh "${REPO_URL}/install/xray.sh"
 wget -O install/ssh.sh "${REPO_URL}/install/ssh.sh"
 wget -O install/wg.sh "${REPO_URL}/install/wg.sh"
+wget -O install/zivpn.sh "${REPO_URL}/install/zivpn.sh"
 
 # Unduh File Menu & Submenu
 wget -O ssh/m-ssh "${REPO_URL}/ssh/m-ssh"
@@ -209,6 +211,10 @@ wget -O xray/m-trojan "${REPO_URL}/xray/m-trojan"
 wget -O xray/m-ssws "${REPO_URL}/xray/m-ssws"
 
 wget -O wg/m-wg "${REPO_URL}/wg/m-wg"
+wget -O udp/m-zivpn "${REPO_URL}/udp/m-zivpn"
+wget -O udp/add-zivpn.sh "${REPO_URL}/udp/add-zivpn.sh"
+wget -O udp/cek-zivpn.sh "${REPO_URL}/udp/cek-zivpn.sh"
+wget -O udp/del-zivpn.sh "${REPO_URL}/udp/del-zivpn.sh"
 
 wget -O tools/tools-menu "${REPO_URL}/tools/tools-menu"
 wget -O tools/backup.sh "${REPO_URL}/tools/backup.sh"
@@ -253,6 +259,9 @@ bash install/ssh.sh
 info "Installing WireGuard..."
 bash install/wg.sh
 
+info "Installing UDP ZIVPN..."
+bash install/zivpn.sh
+
 # ==========================================
 # COPY MENU COMMAND & PERMISSIONS
 # ==========================================
@@ -265,24 +274,25 @@ cp -f xray/m-vless /usr/bin/
 cp -f xray/m-trojan /usr/bin/
 cp -f xray/m-ssws /usr/bin/
 cp -f wg/m-wg /usr/bin/
+cp -f udp/m-zivpn /usr/bin/
 cp -f tools/tools-menu /usr/bin/
 cp -f tools/backup.sh /usr/bin/
 cp -f tools/speedtest.sh /usr/bin/
 cp -f tools/domain.sh /usr/bin/
-cp -f tools/domain.sh /usr/bin/
 cp -f tools/running.sh /usr/bin/
 cp -f menu.sh /usr/bin/menu
 
-chmod +x /usr/bin/menu /usr/bin/m-ssh /usr/bin/m-vmess /usr/bin/m-vless /usr/bin/m-trojan /usr/bin/m-ssws /usr/bin/m-wg /usr/bin/tools-menu /usr/bin/backup.sh /usr/bin/speedtest.sh /usr/bin/domain.sh /usr/bin/running.sh
+chmod +x /usr/bin/menu /usr/bin/m-ssh /usr/bin/m-vmess /usr/bin/m-vless /usr/bin/m-trojan /usr/bin/m-ssws /usr/bin/m-wg /usr/bin/m-zivpn /usr/bin/tools-menu /usr/bin/backup.sh /usr/bin/speedtest.sh /usr/bin/domain.sh /usr/bin/running.sh
 
 # ==========================================
 # COPY RUNTIME SCRIPT TO /etc/ayah-alma/
 # ==========================================
 
-mkdir -p /etc/ayah-alma/{ssh,xray,wg,tools,config,sshws}
+mkdir -p /etc/ayah-alma/{ssh,xray,wg,udp,tools,config,sshws}
 cp -r ssh/* /etc/ayah-alma/ssh/
 cp -r xray/* /etc/ayah-alma/xray/
 cp -r wg/* /etc/ayah-alma/wg/
+cp -r udp/* /etc/ayah-alma/udp/
 cp -r tools/* /etc/ayah-alma/tools/
 cp -r config/* /etc/ayah-alma/config/
 cp -r sshws/* /etc/ayah-alma/sshws/
@@ -314,19 +324,20 @@ fi
 cp -f sshws/*.service /etc/systemd/system/ 2>/dev/null || true
 cp -f internal/go/*.service /etc/systemd/system/ 2>/dev/null || true
 
+# Salin file Python WebSocket dengan ekstensi .py agar terbaca oleh service
 if [ -f "sshws/ws-dropbear.py" ]; then
-    cp sshws/ws-dropbear.py /usr/local/bin/ws-dropbear
-    chmod +x /usr/local/bin/ws-dropbear
+    cp -f sshws/ws-dropbear.py /usr/local/bin/ws-dropbear.py
+    chmod +x /usr/local/bin/ws-dropbear.py
 fi
 
 if [ -f "sshws/ws-stunnel.py" ]; then
-    cp sshws/ws-stunnel.py /usr/local/bin/ws-stunnel
-    chmod +x /usr/local/bin/ws-stunnel
+    cp -f sshws/ws-stunnel.py /usr/local/bin/ws-stunnel.py
+    chmod +x /usr/local/bin/ws-stunnel.py
 fi
 
 systemctl daemon-reload
 
-for svc in xray nginx dropbear wg-quick@wg0 udp-custom dropbear-ws stunnel-ws ws-dropbear ws-stunnel udpgw; do
+for svc in xray nginx dropbear wg-quick@wg0 udp-custom zivpn dropbear-ws stunnel-ws ws-dropbear ws-stunnel udpgw; do
     systemctl enable "$svc" 2>/dev/null || true
     systemctl restart "$svc" 2>/dev/null || true
 done
@@ -352,7 +363,7 @@ chmod 644 /root/.profile
 # CLEAN FILE
 # ==========================================
 
-rm -rf install cf ins-xray.sh ssh xray wg tools config sshws bin menu.sh
+rm -rf install cf ins-xray.sh ssh xray wg udp tools config sshws bin menu.sh
 
 # ==========================================
 # FINISH
@@ -372,6 +383,7 @@ echo -e " Project     : AYAH-ALMA AIO"
 echo -e " SSH & WS    : INSTALLED & COMPILED"
 echo -e " XRAY        : INSTALLED"
 echo -e " WireGuard   : INSTALLED"
+echo -e " UDP ZIVPN   : INSTALLED"
 
 echo ""
 echo -e " Installation Time : $((elapsed / 60)) menit $((elapsed % 60)) detik"
