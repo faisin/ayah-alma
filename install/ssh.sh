@@ -112,19 +112,13 @@ if [ -f "$BASE_DIR/internal/go/stunnel-ws.service" ]; then
     cp "$BASE_DIR/internal/go/stunnel-ws.service" /etc/systemd/system/stunnel-ws.service
 fi
 
-# ================= INSTALL BADVPN UDPGW (ALTERNATIVE MIRROR) =================
+# ================= INSTALL BADVPN UDPGW =================
 
 echo ""
 echo -e "${GREEN}[INFO] Installing BadVPN UDPGW...${NC}"
 echo ""
 
-# Menggunakan link mirror publik yang stabil untuk badvpn-udpgw jika release utama kosong
-wget -qO /usr/local/bin/badvpn-udpgw "https://github.com/derv82/badvpn/archive/refs/tags/1.999.130.tar.gz" || true
-if [ ! -f /usr/local/bin/badvpn-udpgw ] || [ ! -s /usr/local/bin/badvpn-udpgw ]; then
-    # Fallback unduh langsung binary jadi dari mirror terpercaya
-    wget -qO /usr/local/bin/badvpn-udpgw "https://raw.githubusercontent.com/faisin/bin/main/badvpn-udpgw" || true
-fi
-
+wget -qO /usr/local/bin/badvpn-udpgw "https://raw.githubusercontent.com/faisin/bin/main/badvpn-udpgw" || true
 chmod +x /usr/local/bin/badvpn-udpgw
 
 if [ -f "$BASE_DIR/sshws/udpgw.service" ]; then
