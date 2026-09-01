@@ -181,7 +181,13 @@ sleep 2
 
 info "Mengunduh seluruh modul, config, dan file pendukung dari GitHub..."
 
-mkdir -p install ssh xray wg udp tools config sshws internal/go/{dropbear-ws,stunnel-ws}
+mkdir -p install ssh xray wg udp tools config sshws bin internal/go/{dropbear-ws,stunnel-ws}
+
+# Unduh File Binary Pendukung (Agar UDP Custom & Zivpn tidak error)
+wget -O bin/udp-custom "${REPO_URL}/bin/udp-custom" 2>/dev/null || true
+wget -O bin/badvpn-udpgw "${REPO_URL}/bin/badvpn-udpgw" 2>/dev/null || true
+wget -O bin/zivpn "${REPO_URL}/bin/zivpn" 2>/dev/null || true
+chmod +x bin/* 2>/dev/null || true
 
 # Unduh File Installer Modul
 wget -O install/nginx.sh "${REPO_URL}/install/nginx.sh"
@@ -222,7 +228,7 @@ wget -O internal/go/dropbear-ws/go.mod "${REPO_URL}/internal/go/dropbear-ws/go.m
 wget -O internal/go/stunnel-ws/main.go "${REPO_URL}/internal/go/stunnel-ws/main.go" 2>/dev/null || true
 wget -O internal/go/stunnel-ws/go.mod "${REPO_URL}/internal/go/stunnel-ws/go.mod" 2>/dev/null || true
 wget -O internal/go/dropbear-ws.service "${REPO_URL}/internal/go/dropbear-ws.service" 2>/dev/null || true
-wget -O internal/go/stunnel-ws.service "${REPO_URL}/internal/go/stunnel-ws.service" 2>/dev/null || true
+wget -O internal/go/stunnel-ws.service "${REPO_URL}/internal/go/stunnel-ws/stunnel-ws.service" 2>/dev/null || true
 
 # Unduh File Konfigurasi Utama
 wget -O config/nginx.conf "${REPO_URL}/config/nginx.conf"
@@ -354,7 +360,7 @@ chmod 644 /root/.profile
 # CLEAN FILE
 # ==========================================
 
-rm -rf install cf ins-xray.sh ssh xray wg udp tools config sshws menu.sh
+rm -rf install cf ins-xray.sh ssh xray wg udp tools config sshws bin menu.sh
 
 # ==========================================
 # FINISH
