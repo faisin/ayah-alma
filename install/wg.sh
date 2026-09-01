@@ -12,13 +12,14 @@ clear
 echo -e "${GREEN}▶️ Memulai instalasi WireGuard...${NC}"
 sleep 1
 
-# Install dependensi dan pastikan modul kernel wireguard tersedia
+# Install dependensi, resolvconf, dan pastikan modul kernel wireguard tersedia
 apt update -y
 DEBIAN_FRONTEND=noninteractive apt install -y \
     wireguard \
     wireguard-tools \
     qrencode \
-    iptables
+    iptables \
+    resolvconf
 
 # Paksa muat modul kernel wireguard jika belum aktif
 modprobe wireguard >/dev/null 2>&1
