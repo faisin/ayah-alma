@@ -37,6 +37,14 @@ echo ""
 exit 1
 fi
 
+# --- TAMBAHAN INPUT LIMIT DEVICE ---
+read -p "Limit Device  : " limit_device
+
+if ! [[ "$limit_device" =~ ^[0-9]+$ ]]; then
+    limit_device="1"
+fi
+# ----------------------------------
+
 EXP=$(date -d "$days days" +%Y-%m-%d)
 
 # CREATE USER
@@ -66,9 +74,10 @@ cat > "$ACCOUNT_FILE" <<EOF
 SSH ACCOUNT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Username : $user
-Password : $pass
-Expired  : $EXP
+Username     : $user
+Password     : $pass
+Expired      : $EXP
+Limit Device : $limit_device
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -135,6 +144,7 @@ echo ""
 echo "Username       : $user"
 echo "Password       : $pass"
 echo "Expired        : $EXP"
+echo "Limit Device   : $limit_device"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
@@ -164,4 +174,3 @@ echo "Saved To:"
 echo "$ACCOUNT_FILE"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-
