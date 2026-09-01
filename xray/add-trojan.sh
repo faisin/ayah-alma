@@ -1,4 +1,5 @@
 #!/bin/bash
+# Add Trojan Account - by Ayah Alma
 set -e
 
 clear
@@ -19,6 +20,13 @@ until [[ $user =~ ^[a-zA-Z0-9_]+$ ]]; do
 done
 
 read -rp "Expired (days): " masaaktif
+
+# --- TAMBAHAN INPUT LIMIT DEVICE ---
+read -rp "Limit Device (Contoh: 2): " limit_device
+if [[ -z "$limit_device" ]]; then
+    limit_device="1"
+fi
+# ----------------------------------
 
 uuid=$(cat /proc/sys/kernel/random/uuid)
 exp=$(date -d "$masaaktif days" +"%Y-%m-%d")
@@ -111,8 +119,8 @@ if ! systemctl is-active --quiet xray; then
 
 fi
 
-# simpan database user
-echo "${user} ${exp} ${uuid}" >> /etc/xray/trojan.db
+# simpan database user (termasuk limit device)
+echo "${user} ${exp} ${uuid} ${limit_device}" >> /etc/xray/trojan.db
 
 # generate trojan link ws
 trojanlink1="trojan://${uuid}@${domain}:${tls}?path=%2Ftrojan-ws&security=tls&type=ws&host=${domain}&sni=${domain}#${user}"
@@ -130,6 +138,7 @@ echo -e "Domain         : ${domain}"
 echo -e "Port TLS       : ${tls}"
 echo -e "Port gRPC      : ${grpc}"
 echo -e "Password       : ${uuid}"
+echo -e "Limit Device   : ${limit_device}"
 echo -e "Network        : ws / grpc"
 echo -e "Path           : /trojan-ws"
 echo -e "ServiceName    : trojan-grpc"
@@ -150,4 +159,3 @@ echo ""
 echo ""
 read -n 1 -s -r -p "Tekan tombol apa saja untuk kembali ke menu..."
 menu
-
