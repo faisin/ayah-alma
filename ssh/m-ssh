@@ -46,27 +46,27 @@ bash /etc/ayah-alma/ssh/trialssh.sh
 
 3)
 clear
-echo "Renew SSH - Coming Soon"
+bash /etc/ayah-alma/ssh/renew-ssh.sh
 ;;
 
 4)
 clear
-echo "Delete SSH - Coming Soon"
+bash /etc/ayah-alma/ssh/del-ssh.sh
 ;;
 
 5)
 clear
-echo "Check Login SSH - Coming Soon"
+bash /etc/ayah-alma/ssh/cek-ssh.sh
 ;;
 
 6)
 clear
-echo "List Member SSH - Coming Soon"
+bash /etc/ayah-alma/ssh/member-ssh.sh
 ;;
 
 7)
 clear
-echo "Delete Expired SSH - Coming Soon"
+bash /etc/ayah-alma/ssh/clear-exp-ssh.sh
 ;;
 
 8)
