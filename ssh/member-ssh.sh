@@ -12,7 +12,7 @@ echo "No  | Username         | Expired Date"
 echo "-------------------------------------"
 
 no=1
-while IFS: read -r user x uid gid comment home shell; do
+while IFS=':' read -r user x uid gid comment home shell; do
     if [[ "$shell" == *"/bash"* || "$shell" == *"/sh"* ]]; then
         # Mengabaikan user sistem standar
         if [[ "$user" != "root" && "$user" != "daemon" && "$user" != "bin" && "$user" != "sys" && "$user" != "sync" && "$user" != "games" && "$user" != "man" && "$user" != "mail" && "$user" != "news" && "$user" != "uucp" && "$user" != "proxy" && "$user" != "www-data" && "$user" != "backup" && "$user" != "list" && "$user" != "irc" && "$user" != "gnats" && "$user" != "nobody" && "$user" != "systemd-network" && "$user" != "systemd-resolve" && "$user" != "messagebus" && "$user" != "_apt" && "$user" != "uuidd" && "$user" != "dnsmasq" && "$user" != "stunnel4" ]]; then
