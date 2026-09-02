@@ -64,22 +64,29 @@ DISK=$(df -h / | awk 'NR==2{print $3 "/" $2}')
 
 # ================= NETWORK =================
 
-IFACE=$(ip route get 1.1.1.1 | awk '{print $5; exit}')
+IFACE=$(ip route get 1.1.1.1 2>/dev/null | awk '{print $5; exit}')
+if [[ -z "$IFACE" ]]; then
+    IFACE="eth0"
+fi
 
 MONTH_NAME=$(date +"%Y-%m")
 
-TODAY=$(vnstat -i $IFACE | awk '/today/ {print $8" "$9}')
-
-YESTERDAY=$(vnstat -i $IFACE | awk '/yesterday/ {print $8" "$9}')
-
-MONTH=$(vnstat -i $IFACE | awk -v m="$MONTH_NAME" '
-$1 ~ m {print $8" "$9}
-')
-
-TOTAL_BW=$(vnstat --oneline | cut -d; -f15)
+if command -v vnstat &>/dev/null; then
+    TODAY=$(vnstat -i "$IFACE" 2>/dev/null | awk '/today/ {print $8" "$9}')
+    YESTERDAY=$(vnstat -i "$IFACE" 2>/dev/null | awk '/yesterday/ {print $8" "$9}')
+    MONTH=$(vnstat -i "$IFACE" 2>/dev/null | awk -v m="$MONTH_NAME" '$1 ~ m {print $8" "$9}')
+    TOTAL_BW=$(vnstat --oneline 2>/dev/null | cut -d; -f15)
+else
+    TODAY="N/A"
+    YESTERDAY="N/A"
+    MONTH="N/A"
+    TOTAL_BW="N/A"
+fi
 
 [[ -z "$YESTERDAY" ]] && YESTERDAY="0 B"
 [[ -z "$TOTAL_BW" ]] && TOTAL_BW="0 B"
+[[ -z "$TODAY" ]] && TODAY="0 B"
+[[ -z "$MONTH" ]] && MONTH="0 B"
 
 # ================= STATUS =================
 
@@ -149,17 +156,17 @@ fi
 
 # ================= USER COUNT =================
 
-VMESS=$(jq '[.inbounds[] | select(.tag=="vmess-ws-tls").settings.clients[]] | length' $CONFIG 2>/dev/null)
+VMESS=$(jq '[.inbounds[] | select(.tag=="vmess-ws-tls").settings.clients[]] | length' $CONFIG 2>/dev/null || echo 0)
 
-VLESS=$(jq '[.inbounds[] | select(.tag=="vless-ws-tls").settings.clients[]] | length' $CONFIG 2>/dev/null)
+VLESS=$(jq '[.inbounds[] | select(.tag=="vless-ws-tls").settings.clients[]] | length' $CONFIG 2>/dev/null || echo 0)
 
-TROJAN=$(jq '[.inbounds[] | select(.tag=="trojan-ws-tls").settings.clients[]] | length' $CONFIG 2>/dev/null)
+TROJAN=$(jq '[.inbounds[] | select(.tag=="trojan-ws-tls").settings.clients[]] | length' $CONFIG 2>/dev/null || echo 0)
 
-SSWS=$(jq '[.inbounds[] | select(.tag=="ssws-ws-tls").settings.clients[]] | length' $CONFIG 2>/dev/null)
+SSWS=$(jq '[.inbounds[] | select(.tag=="ssws-ws-tls").settings.clients[]] | length' $CONFIG 2>/dev/null || echo 0)
 
-ZIVPN_USER=$(grep -vc '^$' /etc/zivpn/users.db 2>/dev/null)
+ZIVPN_USER=$(grep -vc '^$' /etc/zivpn/users.db 2>/dev/null || echo 0)
 
-SSH_USER=$(awk -F: '$3 >= 1000 && $1 != "nobody" {print $1}' /etc/passwd | wc -l)
+SSH_USER=$(awk -F: '$3 >= 1000 && $1 != "nobody" {print $1}' /etc/passwd 2>/dev/null | wc -l)
 
 TOTAL=$((VMESS + VLESS + TROJAN + SSWS + ZIVPN_USER + SSH_USER))
 
