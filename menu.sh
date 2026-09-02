@@ -195,22 +195,22 @@ clear
 # ================= HEADER =================
 
 echo -e "${CYAN}┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓${NC}"
-echo -e "${CYAN}┃${WHITE}          ⚡ AYAH-ALMA XRAY PANEL ⚡         ${CYAN}┃${NC}"
+echo -e "${CYAN}┃${GREEN}          ⚡ AYAH-ALMA XRAY PANEL ⚡         ${CYAN}┃${NC}"
 echo -e "${CYAN}┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛${NC}"
 
 # ================= SYSTEM INFO =================
 
 echo -e "${YELLOW}┌──────────────── SYSTEM INFO ────────────────┐${NC}"
 
-printf " ${WHITE}IP VPS      ${NC}: %-25s\n" "$IP"
-printf " ${WHITE}DOMAIN      ${NC}: %-25s\n" "$DOMAIN"
-printf " ${WHITE}ISP         ${NC}: %-25s\n" "$ISP"
-printf " ${WHITE}OS          ${NC}: %-25s\n" "$OS"
-printf " ${WHITE}UPTIME      ${NC}: %-25s\n" "$UPTIME"
-printf " ${WHITE}CPU USAGE   ${NC}: %-25s\n" "$CPU"
-printf " ${WHITE}RAM USAGE   ${NC}: %-25s\n" "$RAM"
-printf " ${WHITE}DISK USAGE  ${NC}: %-25s\n" "$DISK"
-printf " ${WHITE}SERVER TIME ${NC}: %-25s\n" "$TIME"
+printf " ${GREEN}IP VPS      ${NC}: ${GREEN}%-25s${NC}\n" "$IP"
+printf " ${GREEN}DOMAIN      ${NC}: ${GREEN}%-25s${NC}\n" "$DOMAIN"
+printf " ${GREEN}ISP         ${NC}: ${GREEN}%-25s${NC}\n" "$ISP"
+printf " ${GREEN}OS          ${NC}: ${GREEN}%-25s${NC}\n" "$OS"
+printf " ${GREEN}UPTIME      ${NC}: ${GREEN}%-25s${NC}\n" "$UPTIME"
+printf " ${GREEN}CPU USAGE   ${NC}: ${GREEN}%-25s${NC}\n" "$CPU"
+printf " ${GREEN}RAM USAGE   ${NC}: ${GREEN}%-25s${NC}\n" "$RAM"
+printf " ${GREEN}DISK USAGE  ${NC}: ${GREEN}%-25s${NC}\n" "$DISK"
+printf " ${GREEN}SERVER TIME ${NC}: ${GREEN}%-25s${NC}\n" "$TIME"
 
 echo -e "${YELLOW}└─────────────────────────────────────────────┘${NC}"
 
@@ -218,11 +218,11 @@ echo -e "${YELLOW}└───────────────────�
 
 echo -e "${CYAN}┌──────────────── BANDWIDTH ──────────────────┐${NC}"
 
-printf " ${WHITE}TODAY${NC}   : %-10s" "$TODAY"
-printf " ${WHITE}YESTERDAY${NC}  : %-10s\n" "$YESTERDAY"
+printf " ${GREEN}TODAY${NC}   : ${GREEN}%-10s${NC}" "$TODAY"
+printf " ${GREEN}YESTERDAY${NC}  : ${GREEN}%-10s${NC}\n" "$YESTERDAY"
 
-printf " ${WHITE}MONTH${NC}   : %-10s" "$MONTH"
-printf " ${WHITE}TOTAL${NC}      : %-10s\n" "$TOTAL_BW"
+printf " ${GREEN}MONTH${NC}   : ${GREEN}%-10s${NC}" "$MONTH"
+printf " ${GREEN}TOTAL${NC}      : ${GREEN}%-10s${NC}\n" "$TOTAL_BW"
 
 echo -e "${CYAN}└─────────────────────────────────────────────┘${NC}"
 
@@ -230,11 +230,11 @@ echo -e "${CYAN}└────────────────────�
 
 echo -e "${CYAN}┌──────────────── USER STATS ─────────────────┐${NC}"
 
-echo -e " ${WHITE}VMESS${NC} : $VMESS     ${WHITE}VLESS${NC} : $VLESS     ${WHITE}TROJAN${NC} : $TROJAN"
+echo -e " ${GREEN}VMESS${NC} : ${GREEN}$VMESS${NC}     ${GREEN}VLESS${NC} : ${GREEN}$VLESS${NC}     ${GREEN}TROJAN${NC} : ${GREEN}$TROJAN${NC}"
 
-echo -e " ${WHITE}SSWS${NC}  : $SSWS     ${WHITE}SSH${NC}   : $SSH_USER     ${WHITE}ZIVPN${NC} : $ZIVPN_USER"
+echo -e " ${GREEN}SSWS${NC}  : ${GREEN}$SSWS${NC}     ${GREEN}SSH${NC}   : ${GREEN}$SSH_USER${NC}     ${GREEN}ZIVPN${NC} : ${GREEN}$ZIVPN_USER${NC}"
 
-echo -e " ${WHITE}TOTAL${NC} : $TOTAL    ${WHITE}ONLINE${NC} : $ONLINE"
+echo -e " ${GREEN}TOTAL${NC} : ${GREEN}$TOTAL${NC}    ${GREEN}ONLINE${NC} : ${GREEN}$ONLINE${NC}"
 
 echo -e "${CYAN}└─────────────────────────────────────────────┘${NC}"
 
@@ -242,10 +242,10 @@ echo -e "${CYAN}└────────────────────�
 
 echo -e "${BLUE}┌──────────────── SERVICE ────────────────────┐${NC}"
 
-echo -e " ${WHITE}XRAY${NC}      : $XRAY  ${WHITE}NGINX${NC}     : $NGINX     "
-echo -e " ${WHITE}DROPBEAR${NC}  : $DROPBEAR  ${WHITE}WIREGUARD${NC} : $WG        "
-echo -e " ${WHITE}UDP CUSTOM${NC}: $UDPCUSTOM  ${WHITE}UDP ZIVPN${NC} : $ZIVPN     "
-echo -e " ${WHITE}SSH WS${NC}    : $DROPBEARWS ${WHITE}WSS${NC}       : $STUNNELWS "
+echo -e " ${GREEN}XRAY${NC}      : $XRAY  ${GREEN}NGINX${NC}     : $NGINX     "
+echo -e " ${GREEN}DROPBEAR${NC}  : $DROPBEAR  ${GREEN}WIREGUARD${NC} : $WG        "
+echo -e " ${GREEN}UDP CUSTOM${NC}: $UDPCUSTOM  ${GREEN}UDP ZIVPN${NC} : $ZIVPN     "
+echo -e " ${GREEN}SSH WS${NC}    : $DROPBEARWS ${GREEN}WSS${NC}       : $STUNNELWS "
 
 echo -e "${BLUE}└─────────────────────────────────────────────┘${NC}"
 
@@ -253,19 +253,19 @@ echo -e "${BLUE}└────────────────────�
 
 echo -e "${RED}┌──────────────── MAIN MENU ──────────────────┐${NC}"
 
-echo -e " [1] ${WHITE}SSH${NC}          [8] ${WHITE}TOOLS${NC}"
-echo -e " [2] ${WHITE}VMESS${NC}        [9] ${WHITE}STATUS${NC}"
-echo -e " [3] ${WHITE}VLESS${NC}        [10] ${WHITE}CLEAR RAM${NC}"
-echo -e " [4] ${WHITE}TROJAN${NC}       [11] ${WHITE}REBOOT VPS${NC}"
-echo -e " [5] ${WHITE}SSWS${NC}         [12] ${WHITE}UNINSTALL${NC}"
-echo -e " [6] ${WHITE}WIREGUARD${NC}    [13] ${WHITE}UDP CUSTOM${NC}"
-echo -e " [7] ${WHITE}UDP ZIVPN${NC}    [x] ${WHITE}EXIT${NC}"
+echo -e " ${GREEN}[1] SSH${NC}          ${GREEN}[8] TOOLS${NC}"
+echo -e " ${GREEN}[2] VMESS${NC}        ${GREEN}[9] STATUS${NC}"
+echo -e " ${GREEN}[3] VLESS${NC}        ${GREEN}[10] CLEAR RAM${NC}"
+echo -e " ${GREEN}[4] TROJAN${NC}       ${GREEN}[11] REBOOT VPS${NC}"
+echo -e " ${GREEN}[5] SSWS${NC}         ${GREEN}[12] UNINSTALL${NC}"
+echo -e " ${GREEN}[6] WIREGUARD${NC}    ${GREEN}[13] UDP CUSTOM${NC}"
+echo -e " ${GREEN}[7] UDP ZIVPN${NC}    ${GREEN}[x] EXIT${NC}"
 
 echo -e "${RED}└─────────────────────────────────────────────┘${NC}"
 
 echo -e "${RED}┌──────────────── LICENSE ────────────────────┐${NC}"
-echo -e " ${WHITE}License${NC} : AYAH-ALMA-ULTIMATE"
-echo -e " ${WHITE}Type${NC}    : Lifetime Premium"
+echo -e " ${GREEN}License${NC} : ${GREEN}AYAH-ALMA-ULTIMATE${NC}"
+echo -e " ${GREEN}Type${NC}    : ${GREEN}Lifetime Premium${NC}"
 echo -e "${RED}└─────────────────────────────────────────────┘${NC}"
 
 read -rp "Select Menu : " menu
