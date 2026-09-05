@@ -15,6 +15,7 @@ echo -e "${GREEN}[1]${NC} Backup & Restore Config"
 echo -e "${GREEN}[2]${NC} Speedtest VPS"
 echo -e "${GREEN}[3]${NC} Ganti Domain XRAY"
 echo -e "${GREEN}[4]${NC} Cek status layanan aktif"
+echo -e "${GREEN}[5]${NC} Jalankan Bot Telegram (Dana Kaget)"
 echo -e "${GREEN}[x]${NC} Kembali ke menu utama"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 read -p "👉 Pilih opsi: " opt
@@ -24,6 +25,18 @@ case $opt in
 2) bash /etc/ayah-alma/tools/speedtest.sh ;;
 3) bash /etc/ayah-alma/tools/domain.sh ;;
 4) bash /etc/ayah-alma/tools/running.sh ;;
+5) 
+    clear
+    echo -e "${CYAN}🤖 Menjalankan Bot Telegram...${NC}"
+    if ! command -v python3 &> /dev/null; then
+        apt update && apt install python3 python3-requests -y
+    fi
+    pkill -f "telegram-bot.py"
+    nohup python3 /etc/ayah-alma/tools/telegram-bot.py > /dev/null 2>&1 &
+    echo -e "${GREEN}✔ Bot Telegram berhasil aktif di background!${NC}"
+    sleep 2
+    tools-menu
+    ;;
 x|X) menu ;;
 *) echo "❌ Pilihan salah!" ; sleep 1 ; tools-menu ;;
 esac
