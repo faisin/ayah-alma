@@ -27,7 +27,7 @@ echo -e "${YELLOW} 6.${NC} List Member SSH"
 echo -e "${YELLOW} 7.${NC} Delete Expired SSH"
 echo -e "${YELLOW} 8.${NC} Check Service SSH"
 echo -e "${YELLOW} 9.${NC} Restart Service SSH"
-echo -e "${YELLOW} x.${NC} Exit"
+echo -e "${YELLOW} x.${NC} Kembali ke Menu Panel"
 
 echo ""
 read -p "Select Menu : " x
@@ -82,6 +82,9 @@ echo ""
 systemctl status udp-custom --no-pager
 echo ""
 systemctl status udpgw --no-pager
+echo ""
+read -p "Tekan Enter untuk kembali..."
+/usr/bin/m-ssh 2>/dev/null || bash /etc/ayah-alma/ssh/m-ssh
 ;;
 
 9)
@@ -97,16 +100,18 @@ systemctl restart udpgw
 echo ""
 echo -e "${GREEN}[ OK ] All SSH Service Restarted${NC}"
 echo ""
-
+read -p "Tekan Enter untuk kembali..."
+/usr/bin/m-ssh 2>/dev/null || bash /etc/ayah-alma/ssh/m-ssh
 ;;
 
-x)
-exit
+x|X)
+/usr/bin/menu 2>/dev/null || menu
+exit 0
 ;;
 
 *)
-echo "❌ Pilihan salah!"
+echo -e "${RED}❌ Pilihan salah!${NC}"
 sleep 1
-exec m-ssh
+/usr/bin/m-ssh 2>/dev/null || bash /etc/ayah-alma/ssh/m-ssh
 ;;
 esac
