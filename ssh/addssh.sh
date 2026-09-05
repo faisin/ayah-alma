@@ -18,6 +18,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 read -p "Pilih menu [1, x]: " menu_pilihan
 
 if [[ "$menu_pilihan" == "x" || "$menu_pilihan" == "X" ]]; then
+    m-ssh
     exit 0
 fi
 
