@@ -152,11 +152,25 @@ echo -e "${blue}━━━━━━━━━━━━━━━━━━━━━�
 echo -e "${cyan}         DOMAIN SETUP${NC}"
 echo -e "${blue}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
+echo -e "1. Menggunakan Domain dari Script (Default / Auto)"
+echo -e "2. Pakai Domain Sendiri (Custom Domain)"
+echo -e "${blue}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+read -rp "Pilih opsi (1/2) : " pilihan
 
-read -rp "Masukkan domain kamu : " domain
-
-if [[ -z "$domain" ]]; then
-    error "Domain tidak boleh kosong!"
+if [[ "$pilihan" == "1" ]]; then
+    # Ambil IP VPS publik secara otomatis sebagai default domain/host
+    pub_ip=$(curl -s https://api.ipify.org || hostname -I | awk '{print $1}')
+    domain="${pub_ip}.sslip.io"
+    info "Menggunakan domain otomatis: $domain"
+elif [[ "$pilihan" == "2" ]]; then
+    echo ""
+    read -rp "Masukkan domain kamu (contoh: domain.com) : " domain
+    if [[ -z "$domain" ]]; then
+        error "Domain tidak boleh kosong!"
+        exit 1
+    fi
+else
+    error "Pilihan tidak valid!"
     exit 1
 fi
 
@@ -181,7 +195,7 @@ sleep 2
 
 info "Mengunduh seluruh modul, config, dan file pendukung dari GitHub..."
 
-mkdir -p install ssh xray wg udp tools config sshws bin internal/go/{dropbear-ws,stunnel-ws}
+mkdir -p install ssh xray wg udp tools config sshws bin internal/go/dropbear-ws internal/go/stunnel-ws
 
 # Unduh File Binary & Konfigurasi Utama
 wget -O /usr/local/bin/udp-custom "${REPO_URL}/config/udp-custom" 2>/dev/null || true
@@ -230,13 +244,13 @@ wget -O sshws/udpgw.service "${REPO_URL}/sshws/udpgw.service"
 wget -O sshws/ws-dropbear.service "${REPO_URL}/sshws/ws-dropbear.service"
 wget -O sshws/ws-stunnel.service "${REPO_URL}/sshws/ws-stunnel.service"
 
-# Unduh Source Go Dropbear-WS & Stunnel-WS
+# Unduh Source Go Dropbear-WS & Stunnel-WS (Koreksi Path Service Stunnel-WS)
 wget -O internal/go/dropbear-ws/main.go "${REPO_URL}/internal/go/dropbear-ws/main.go"
 wget -O internal/go/dropbear-ws/go.mod "${REPO_URL}/internal/go/dropbear-ws/go.mod" 2>/dev/null || true
 wget -O internal/go/stunnel-ws/main.go "${REPO_URL}/internal/go/stunnel-ws/main.go" 2>/dev/null || true
 wget -O internal/go/stunnel-ws/go.mod "${REPO_URL}/internal/go/stunnel-ws/go.mod" 2>/dev/null || true
 wget -O internal/go/dropbear-ws.service "${REPO_URL}/internal/go/dropbear-ws.service" 2>/dev/null || true
-wget -O internal/go/stunnel-ws.service "${REPO_URL}/internal/go/stunnel-ws/stunnel-ws.service" 2>/dev/null || true
+wget -O internal/go/stunnel-ws.service "${REPO_URL}/internal/go/stunnel-ws.service" 2>/dev/null || true
 
 wget -O menu.sh "${REPO_URL}/menu.sh"
 wget -O uninstall.sh "${REPO_URL}/uninstall.sh"
@@ -289,13 +303,13 @@ chmod +x /usr/bin/menu /usr/bin/m-ssh /usr/bin/m-vmess /usr/bin/m-vless /usr/bin
 # ==========================================
 
 mkdir -p /etc/ayah-alma/{ssh,xray,wg,udp,tools,config,sshws}
-cp -r ssh/* /etc/ayah-alma/ssh/
-cp -r xray/* /etc/ayah-alma/xray/
-cp -r wg/* /etc/ayah-alma/wg/
-cp -r udp/* /etc/ayah-alma/udp/
-cp -r tools/* /etc/ayah-alma/tools/
-cp -r config/* /etc/ayah-alma/config/
-cp -r sshws/* /etc/ayah-alma/sshws/
+cp -r ssh/* /etc/ayah-alma/ssh/ 2>/dev/null || true
+cp -r xray/* /etc/ayah-alma/xray/ 2>/dev/null || true
+cp -r wg/* /etc/ayah-alma/wg/ 2>/dev/null || true
+cp -r udp/* /etc/ayah-alma/udp/ 2>/dev/null || true
+cp -r tools/* /etc/ayah-alma/tools/ 2>/dev/null || true
+cp -r config/* /etc/ayah-alma/config/ 2>/dev/null || true
+cp -r sshws/* /etc/ayah-alma/sshws/ 2>/dev/null || true
 
 chmod +x /etc/ayah-alma/*/*.sh 2>/dev/null || true
 
@@ -363,7 +377,7 @@ chmod 644 /root/.profile
 # CLEAN FILE
 # ==========================================
 
-rm -rf install cf ins-xray.sh ssh xray wg udp tools config sshws bin menu.sh
+rm -rf install cf ins-xray.sh ssh xray wg udp tools config sshws bin internal menu.sh uninstall.sh
 
 # ==========================================
 # FINISH
