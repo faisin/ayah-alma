@@ -65,7 +65,7 @@ def main():
                             "inline_keyboard": [
                                 [{"text": "🌐 Daftar Harga VPN / Xray", "callback_data": "menu_produk"}],
                                 [{"text": "💳 Cara Order & Pembayaran", "callback_data": "menu_cara_order"}],
-                                [{"text": "👤 Hubungi Admin", "url": "https://t.me/UsernameAdminAnda"}]
+                                [{"text": "👤 Hubungi Admin", "url": "https://t.me/anindyaalmahyra"}]
                             ]
                         }
                         send_message(chat_id, reply, keyboard)
