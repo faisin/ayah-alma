@@ -8,9 +8,16 @@ echo "      PILIH DURASI TRIAL"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  1. Trial 1 Jam"
 echo "  2. Trial 3 Jam"
-echo "  3. Trial 24 Jam (1 Hari)"
+echo "  3. Trial 5 Jam"
+echo "  4. Trial 24 Jam (1 Hari)"
+echo "  x. Kembali ke Menu Utama"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-read -p "Pilih durasi [1-3]: " durasi
+read -p "Pilih durasi [1-4, x]: " durasi
+
+if [[ "$durasi" == "x" || "$durasi" == "X" ]]; then
+    /usr/bin/m-ssh 2>/dev/null || bash /etc/ayah-alma/ssh/m-ssh
+    exit 0
+fi
 
 # SETELAH INPUT, BARU SISTEM MEMPROSES DATA
 case $durasi in
@@ -24,11 +31,17 @@ case $durasi in
         ;;
     3)
         days="1"
+        ket_waktu="5 Jam"
+        ;;
+    4)
+        days="1"
         ket_waktu="1 Hari"
         ;;
     *)
-        days="1"
-        ket_waktu="1 Hari"
+        echo "Pilihan tidak valid!"
+        sleep 2
+        /usr/bin/m-ssh 2>/dev/null || bash /etc/ayah-alma/ssh/m-ssh
+        exit 1
         ;;
 esac
 
@@ -86,74 +99,43 @@ Expired      : $EXP ($ket_waktu)
 Limit Device : $limit_device
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Domain   : $DOMAIN
-IP VPS   : $IP
-
-OpenSSH  : 22
-Dropbear : 109,143
-SSH WS   : 2082
-SSH WSS  : 2096
-UdpSSH   : 1-65535
-BadVPN   : 7300
-
+SERVER INFORMATION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-SSH UDP CUSTOM
+Domain       : $DOMAIN
+IP VPS       : $IP
 
+OpenSSH      : 22
+Dropbear     : 109, 143
+SSH WS       : 2082
+SSH WSS      : 2096
+UdpSSH       : 1-65535
+BadVPN       : 7300
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONNECTION FORMAT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+UDP CUSTOM
 $DOMAIN:1-65535@$user:$pass
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 SSH WS
-
 $DOMAIN:2082@$user:$pass
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 SSH WSS
-
 $DOMAIN:2096@$user:$pass
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Saved File   : $ACCOUNT_FILE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 EOF
 
 clear
+cat "$ACCOUNT_FILE"
 
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "     SSH TRIAL ACCOUNT"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "Username       : $user"
-echo "Password       : $pass"
-echo "Durasi Trial   : $ket_waktu"
-echo "Limit Device   : $limit_device"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "Domain         : $DOMAIN"
-echo "IP VPS         : $IP"
-echo ""
-echo "OpenSSH        : 22"
-echo "Dropbear       : 109,143"
-echo "SSH WS         : 2082"
-echo "SSH WSS        : 2096"
-echo "UdpSSH         : 1-65535"
-echo "BadVPN UDPGW   : 7300"
-echo ""
+echo "  x. Kembali ke Menu Utama"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "SSH UDP CUSTOM"
-echo "$DOMAIN:1-65535@$user:$pass"
-echo ""
-echo "SSH WS"
-echo "$DOMAIN:2082@$user:$pass"
-echo ""
-echo "SSH WSS"
-echo "$DOMAIN:2096@$user:$pass"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Saved To:"
-echo "$ACCOUNT_FILE"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+read -p "Tekan [x atau Enter] untuk kembali: " menu_pilihan
+/usr/bin/m-ssh 2>/dev/null || bash /etc/ayah-alma/ssh/m-ssh
