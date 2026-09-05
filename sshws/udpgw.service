@@ -1,4 +1,3 @@
-cat << 'EOF' > /etc/systemd/system/udpgw.service
 [Unit]
 Description=BadVPN UDPGW Service - by Ayah Alma
 After=network.target
@@ -12,4 +11,3 @@ RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
-EOF
