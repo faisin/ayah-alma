@@ -178,8 +178,8 @@ cut -d':' -f2 | sort -u | wc -l)
 
 clear
 
-echo -ne "${RED}"
-printf "⚡ Loading AYAH-ALMA PANEL ⚡" | type_text
+echo -ne "${YELLOW}"
+printf "🚀🚀🚀 LOADING AYAH-ALMA PANEL VESION 🚀🚀🚀" | type_text
 echo -e "${NC}"
 
 loading "Loading System Modules"
@@ -251,15 +251,15 @@ echo -e "${BLUE}└────────────────────�
 
 # ================= MENU =================
 
-echo -e "${RED}┌──────────────── MAIN MENU ──────────────────┐${NC}"
+echo -e "${RED}┌──────────────── MENU AYAH ALMA──────────────────┐${NC}"
 
-echo -e " ${GREEN}[1] SSH${NC}          ${GREEN}[8] TOOLS${NC}"
-echo -e " ${GREEN}[2] VMESS${NC}        ${GREEN}[9] STATUS${NC}"
-echo -e " ${GREEN}[3] VLESS${NC}        ${GREEN}[10] CLEAR RAM${NC}"
-echo -e " ${GREEN}[4] TROJAN${NC}       ${GREEN}[11] REBOOT VPS${NC}"
-echo -e " ${GREEN}[5] SSWS${NC}         ${GREEN}[12] UNINSTALL${NC}"
-echo -e " ${GREEN}[6] WIREGUARD${NC}    ${GREEN}[13] UDP CUSTOM${NC}"
-echo -e " ${GREEN}[7] UDP ZIVPN${NC}    ${GREEN}[x] EXIT${NC}"
+echo -e " ${CYAN}[1]${NC} ${GREEN}SSH${NC}          ${GREEN}[8] TOOLS${NC}"
+echo -e " ${CYAN}[2]${NC} ${GRENN}VMESS${NC}        ${GREEN}[9] STATUS${NC}"
+echo -e " ${CYAN}[3]${NC} ${GREEN}VLESS${NC}        ${GREEN}[10] CLEAR RAM${NC}"
+echo -e " ${CYAN}[4]${NC} ${GREEN}TROJAN${NC}       ${GREEN}[11] REBOOT VPS${NC}"
+echo -e " ${CYAN}[5]${NC} ${GREEN}SSWS${NC}         ${GREEN}[12] UNINSTALL${NC}"
+echo -e " ${CYAN}[6]${NC} ${GREEN}WIREGUARD${NC}    ${GREEN}[13] UDP CUSTOM${NC}"
+echo -e " ${CYAN}[7]${NC} ${GREEN}UDP ZIVPN${NC}    ${GREEN}[x] EXIT${NC}"
 
 echo -e "${RED}└─────────────────────────────────────────────┘${NC}"
 
