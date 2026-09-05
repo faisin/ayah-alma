@@ -18,7 +18,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 read -p "Pilih menu [1, x]: " menu_pilihan
 
 if [[ "$menu_pilihan" == "x" || "$menu_pilihan" == "X" ]]; then
-    m-ssh
+    /usr/bin/m-ssh 2>/dev/null || bash /etc/ayah-alma/ssh/m-ssh
     exit 0
 fi
 
@@ -57,6 +57,8 @@ if [[ "$menu_pilihan" == "1" ]]; then
     fi
 else
     echo "Pilihan tidak valid!"
+    sleep 1
+    /usr/bin/m-ssh 2>/dev/null || bash /etc/ayah-alma/ssh/m-ssh
     exit 1
 fi
 
