@@ -30,4 +30,11 @@ fi
 
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  x. Kembali ke Menu Utama"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+read -p "Tekan [x] untuk kembali: " pilihan
 
+if [[ "$pilihan" == "x" || "$pilihan" == "X" ]]; then
+    /usr/bin/m-ssh 2>/dev/null || bash /etc/ayah-alma/ssh/m-ssh
+    exit 0
+fi
