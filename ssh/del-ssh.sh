@@ -6,13 +6,21 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "      DELETE SSH ACCOUNT"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
+echo "  x. Kembali ke Menu Utama"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+read -p "Username to delete [atau ketik x]: " user
 
-read -p "Username to delete : " user
+if [[ "$user" == "x" || "$user" == "X" ]]; then
+    /usr/bin/m-ssh 2>/dev/null || bash /etc/ayah-alma/ssh/m-ssh
+    exit 0
+fi
 
 if ! id "$user" &>/dev/null; then
     echo ""
     echo "[ ERROR ] Username does not exist!"
     echo ""
+    sleep 2
+    /usr/bin/m-ssh 2>/dev/null || bash /etc/ayah-alma/ssh/m-ssh
     exit 1
 fi
 
@@ -33,4 +41,7 @@ echo "Username     : $user"
 echo "Status       : Removed from system"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-
+echo "  x. Kembali ke Menu Utama"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+read -p "Tekan [x atau Enter] untuk kembali: " menu_pilihan
+/usr/bin/m-ssh 2>/dev/null || bash /etc/ayah-alma/ssh/m-ssh
