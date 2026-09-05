@@ -95,7 +95,7 @@ XRAY=$(systemctl is-active xray)
 if [[ $XRAY == "active" ]]; then
 XRAY="${GREEN}🟢 ONLINE${NC}"
 else
-XRAY="${RED}🔴 OFFLINE${NC}"
+XRAY="${RED}🔴 OFF${NC}"
 fi
 
 NGINX=$(systemctl is-active nginx)
@@ -103,7 +103,7 @@ NGINX=$(systemctl is-active nginx)
 if [[ $NGINX == "active" ]]; then
 NGINX="${GREEN}🟢 ONLINE${NC}"
 else
-NGINX="${RED}🔴 OFFLINE${NC}"
+NGINX="${RED}🔴 OFF${NC}"
 fi
 
 WG=$(systemctl is-active wg-quick@wg0)
@@ -111,7 +111,7 @@ WG=$(systemctl is-active wg-quick@wg0)
 if [[ $WG == "active" ]]; then
 WG="${GREEN}🟢 ONLINE${NC}"
 else
-WG="${RED}🔴 OFFLINE${NC}"
+WG="${RED}🔴 OFF${NC}"
 fi
 
 ZIVPN=$(systemctl is-active zivpn)
@@ -119,7 +119,7 @@ ZIVPN=$(systemctl is-active zivpn)
 if [[ $ZIVPN == "active" ]]; then
 ZIVPN="${GREEN}🟢 ONLINE${NC}"
 else
-ZIVPN="${RED}🔴 OFFLINE${NC}"
+ZIVPN="${RED}🔴 OFF${NC}"
 fi
 
 UDPCUSTOM=$(systemctl is-active udp-custom)
@@ -127,7 +127,7 @@ UDPCUSTOM=$(systemctl is-active udp-custom)
 if [[ $UDPCUSTOM == "active" ]]; then
     UDPCUSTOM="${GREEN}🟢 ONLINE${NC}"
 else
-    UDPCUSTOM="${RED}🔴 OFFLINE${NC}"
+    UDPCUSTOM="${RED}🔴 OFF${NC}"
 fi
 
 DROPBEARWS=$(systemctl is-active ws-dropbear)
@@ -135,7 +135,7 @@ DROPBEARWS=$(systemctl is-active ws-dropbear)
 if [[ $DROPBEARWS == "active" ]]; then
 DROPBEARWS="${GREEN}🟢 ONLINE${NC}"
 else
-DROPBEARWS="${RED}🔴 OFFLINE${NC}"
+DROPBEARWS="${RED}🔴 OFF${NC}"
 fi
 
 STUNNELWS=$(systemctl is-active stunnel-ws)
@@ -143,7 +143,7 @@ STUNNELWS=$(systemctl is-active stunnel-ws)
 if [[ $STUNNELWS == "active" ]]; then
     STUNNELWS="${GREEN}🟢 ONLINE${NC}"
 else
-    STUNNELWS="${RED}🔴 OFFLINE${NC}"
+    STUNNELWS="${RED}🔴 OFF${NC}"
 fi
 
 DROPBEAR=$(systemctl is-active dropbear)
@@ -151,7 +151,7 @@ DROPBEAR=$(systemctl is-active dropbear)
 if [[ $DROPBEAR == "active" ]]; then
     DROPBEAR="${GREEN}🟢 ONLINE${NC}"
 else
-    DROPBEAR="${RED}🔴 OFFLINE${NC}"
+    DROPBEAR="${RED}🔴 OFF${NC}"
 fi
 
 # ================= USER COUNT =================
@@ -242,10 +242,10 @@ echo -e "${CYAN}└────────────────────�
 
 echo -e "${BLUE}┌──────────────── SERVICE ────────────────────┐${NC}"
 
-printf " ${GREEN}%-12s${NC} : %-10s  ${GREEN}%-12s${NC} : %-10s\n" "XRAY" "$XRAY" "NGINX" "$NGINX"
-printf " ${GREEN}%-12s${NC} : %-10s  ${GREEN}%-12s${NC} : %-10s\n" "DROPBEAR" "$DROPBEAR" "WIREGUARD" "$WG"
-printf " ${GREEN}%-12s${NC} : %-10s  ${GREEN}%-12s${NC} : %-10s\n" "UDP CUSTOM" "$UDPCUSTOM" "UDP ZIVPN" "$ZIVPN"
-printf " ${GREEN}%-12s${NC} : %-10s  ${GREEN}%-12s${NC} : %-10s\n" "SSH WS" "$DROPBEARWS" "WSS" "$STUNNELWS"
+printf " ${GREEN}%-10s${NC} : %-15b  ${GREEN}%-10s${NC} : %-15b\n" "XRAY" "$XRAY" "NGINX" "$NGINX"
+printf " ${GREEN}%-10s${NC} : %-15b  ${GREEN}%-10s${NC} : %-15b\n" "DROPBEAR" "$DROPBEAR" "WIREGUARD" "$WG"
+printf " ${GREEN}%-10s${NC} : %-15b  ${GREEN}%-10s${NC} : %-15b\n" "UDP CUSTOM" "$UDPCUSTOM" "UDP ZIVPN" "$ZIVPN"
+printf " ${GREEN}%-10s${NC} : %-15b  ${GREEN}%-10s${NC} : %-15b\n" "SSH WS" "$DROPBEARWS" "WSS" "$STUNNELWS"
 
 echo -e "${BLUE}└─────────────────────────────────────────────┘${NC}"
 
