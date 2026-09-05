@@ -1,0 +1,43 @@
+#!/bin/bash
+# Clear RAM Cache - by Ayah Alma
+
+GREEN='\e[1;32m'
+CYAN='\e[1;36m'
+YELLOW='\e[1;33m'
+WHITE='\e[1;37m'
+NC='\e[0m'
+
+clear
+echo -e ""
+echo -e "${CYAN}  ┌────────────────────────────────────────┐${NC}"
+echo -e "${CYAN}  │${YELLOW}            🧹 CLEAR RAM CACHE          ${CYAN}│${NC}"
+echo -e "${CYAN}  └────────────────────────────────────────┘${NC}"
+echo -e ""
+
+echo -e " ${YELLOW}⏳ Sedang membersihkan RAM cache dan buffer...${NC}"
+echo -e ""
+
+# Menampilkan penggunaan RAM sebelum dibersihkan
+echo -e "${WHITE}Sebelum dibersihkan:"
+free -h
+echo -e "${NC}"
+
+# Sync dan membersihkan pagecache, dentries, inodes
+sync
+echo 3 > /proc/sys/vm/drop_caches
+
+echo -e "${CYAN}  ──────────────────────────────────────────${NC}"
+echo -e "${GREEN}✔  RAM Cache Berhasil Dibersihkan!${NC}"
+echo -e "${CYAN}  ──────────────────────────────────────────${NC}"
+echo -e ""
+
+# Menampilkan penggunaan RAM sesudah dibersihkan
+echo -e "${WHITE}Sesudah dibersihkan:"
+free -h
+echo -e "${NC}"
+
+echo -e "${CYAN}  ──────────────────────────────────────────${NC}"
+echo ""
+
+read -n 1 -s -r -p " Tekan tombol apa saja untuk kembali ke menu..."
+menu
