@@ -251,17 +251,19 @@ echo -e "${BLUE}└────────────────────�
 
 # ================= MENU =================
 
-echo -e "${RED}┌──────────────── MENU AYAH ALMA──────────────────┐${NC}"
+echo -e "${RED}┌──────────────── MENU AYAH ALMA ─────────────────┐${NC}"
 
-echo -e " ${CYAN}[1]${NC} ${GREEN}SSH${NC}          ${GREEN}[8] TOOLS${NC}"
-echo -e " ${CYAN}[2]${NC} ${GRENN}VMESS${NC}        ${GREEN}[9] STATUS${NC}"
-echo -e " ${CYAN}[3]${NC} ${GREEN}VLESS${NC}        ${GREEN}[10] CLEAR RAM${NC}"
-echo -e " ${CYAN}[4]${NC} ${GREEN}TROJAN${NC}       ${GREEN}[11] REBOOT VPS${NC}"
-echo -e " ${CYAN}[5]${NC} ${GREEN}SSWS${NC}         ${GREEN}[12] UNINSTALL${NC}"
-echo -e " ${CYAN}[6]${NC} ${GREEN}WIREGUARD${NC}    ${GREEN}[13] UDP CUSTOM${NC}"
-echo -e " ${CYAN}[7]${NC} ${GREEN}UDP ZIVPN${NC}    ${GREEN}[x] EXIT${NC}"
+echo -e " ${CYAN}[1]${NC}  ${GREEN}SSH${NC}         ${CYAN}[8]${NC}  ${GREEN}TOOLS${NC}"
+echo -e " ${CYAN}[2]${NC}  ${GREEN}VMESS${NC}       ${CYAN}[9]${NC}  ${GREEN}STATUS${NC}"
+echo -e " ${CYAN}[3]${NC}  ${GREEN}VLESS${NC}       ${CYAN}[10]${NC} ${GREEN}CLEAR RAM${NC}"
+echo -e " ${CYAN}[4]${NC}  ${GREEN}TROJAN${NC}      ${CYAN}[11]${NC} ${GREEN}REBOOT VPS${NC}"
+echo -e " ${CYAN}[5]${NC}  ${GREEN}SSWS${NC}        ${CYAN}[12]${NC} ${GREEN}UNINSTALL${NC}"
+echo -e " ${CYAN}[6]${NC}  ${GREEN}WIREGUARD${NC}   ${CYAN}[13]${NC} ${GREEN}UDP CUSTOM${NC}"
+echo -e " ${CYAN}[7]${NC}  ${GREEN}UDP ZIVPN${NC}   ${CYAN}[x]${NC}  ${GREEN}EXIT${NC}"
 
 echo -e "${RED}└─────────────────────────────────────────────┘${NC}"
+
+# ================= LICENSE =================
 
 echo -e "${RED}┌──────────────── LICENSE ────────────────────┐${NC}"
 echo -e " ${GREEN}License${NC} : ${GREEN}AYAH-ALMA-ULTIMATE${NC}"
