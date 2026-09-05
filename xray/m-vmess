@@ -11,9 +11,10 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 echo -e "${CYAN}              ⚙️ MENU VMESS XRAY              ${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${GREEN}[1]${NC} Tambah Akun VMess"
-echo -e "${GREEN}[2]${NC} Hapus Akun VMess"
-echo -e "${GREEN}[3]${NC} Cek Login VMess"
-echo -e "${GREEN}[4]${NC} Perpanjang Masa Aktif Akun"
+echo -e "${GREEN}[2]${NC} Trial Akun VMess"
+echo -e "${GREEN}[3]${NC} Hapus Akun VMess"
+echo -e "${GREEN}[4]${NC} Cek Login VMess"
+echo -e "${GREEN}[5]${NC} Perpanjang Masa Aktif Akun"
 echo -e "${GREEN}[x]${NC} Kembali ke menu utama"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
@@ -25,24 +26,29 @@ bash /etc/ayah-alma/xray/add-vmess.sh
 ;;
 
 2)
-bash /etc/ayah-alma/xray/del-vmess.sh
+bash /etc/ayah-alma/xray/trial-vmess.sh
 ;;
 
 3)
-bash /etc/ayah-alma/xray/cek-vmess.sh
+bash /etc/ayah-alma/xray/del-vmess.sh
 ;;
 
 4)
+bash /etc/ayah-alma/xray/cek-vmess.sh
+;;
+
+5)
 bash /etc/ayah-alma/xray/renew-vmess.sh
 ;;
 
-x)
-menu
+x|X)
+/usr/bin/menu 2>/dev/null || menu
+exit 0
 ;;
 
 *)
 echo "❌ Pilihan salah!"
 sleep 1
-exec m-vmess
+/usr/bin/m-vmess 2>/dev/null || bash /etc/ayah-alma/xray/m-vmess
 ;;
 esac
