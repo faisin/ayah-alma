@@ -5,10 +5,9 @@ After=network.target
 [Service]
 Type=simple
 User=root
-ExecStart=/usr/bin/python3 /usr/local/bin/ws-stunnel 2096
+ExecStart=/usr/bin/env python3 /usr/local/bin/ws-stunnel 2096
 Restart=always
 RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
-
