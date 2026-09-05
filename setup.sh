@@ -215,9 +215,15 @@ wget -O install/ssh.sh "${REPO_URL}/install/ssh.sh"
 wget -O install/wg.sh "${REPO_URL}/install/wg.sh"
 wget -O install/zivpn.sh "${REPO_URL}/install/zivpn.sh"
 
-# Unduh File Menu & Submenu
+# Unduh File Menu & Submenu SSH AYAH ALMA
 wget -O ssh/m-ssh "${REPO_URL}/ssh/m-ssh"
 wget -O ssh/addssh.sh "${REPO_URL}/ssh/addssh.sh"
+wget -O ssh/trialssh.sh "${REPO_URL}/ssh/trialssh.sh"
+wget -O ssh/renew-ssh.sh "${REPO_URL}/ssh/renew-ssh.sh"
+wget -O ssh/del-ssh.sh "${REPO_URL}/ssh/del-ssh.sh"
+wget -O ssh/cek-ssh.sh "${REPO_URL}/ssh/cek-ssh.sh"
+wget -O ssh/member-ssh.sh "${REPO_URL}/ssh/member-ssh.sh"
+wget -O ssh/clear-exp-ssh.sh "${REPO_URL}/ssh/clear-exp-ssh.sh"
 
 wget -O xray/m-vmess "${REPO_URL}/xray/m-vmess"
 wget -O xray/m-vless "${REPO_URL}/xray/m-vless"
