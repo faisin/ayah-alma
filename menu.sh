@@ -130,7 +130,7 @@ else
     UDPCUSTOM="${RED}🔴 OFFLINE${NC}"
 fi
 
-DROPBEARWS=$(systemctl is-active dropbear-ws)
+DROPBEARWS=$(systemctl is-active ws-dropbear)
 
 if [[ $DROPBEARWS == "active" ]]; then
 DROPBEARWS="${GREEN}🟢 ONLINE${NC}"
