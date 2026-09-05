@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 User=root
-ExecStart=/usr/bin/python3 /usr/local/bin/ws-dropbear.py 2082
+ExecStart=/usr/bin/env python3 /usr/local/bin/ws-dropbear.py 2082
 Restart=always
 RestartSec=5
 
