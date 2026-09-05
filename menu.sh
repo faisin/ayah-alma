@@ -1,5 +1,25 @@
 #!/bin/bash
 
+# ================= IP VALIDATION =================
+CURRENT_IP=$(curl -s ipv4.icanhazip.com)
+ALLOWED_IPS="108.136.245.45" # Ganti atau tambahkan IP yang diizinkan di sini
+
+VALID=false
+for ip in $ALLOWED_IPS; do
+    if [[ "$CURRENT_IP" == "$ip" ]]; then
+        VALID=true
+        break
+    fi
+done
+
+if [[ "$VALID" == false ]]; then
+    echo -e "\033[1;31m❌ Akses Ditolak! IP Anda ($CURRENT_IP) tidak terdaftar.\033[0m"
+    exit 1
+fi
+# ==========================================
+
+# ... (lanjutan kode panel seperti variabel, banner, dan menu di bawahnya)
+
 # ==========================================
 # AYAH-ALMA XRAY PANEL
 # ==========================================
