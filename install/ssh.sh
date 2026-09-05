@@ -188,24 +188,6 @@ for svc in ssh dropbear dropbear-ws stunnel-ws udpgw udp-custom; do
     fi
 done
 
-# ================= NOLOGIN WS ====================
-
-cat > /etc/profile.d/no-login.sh <<'EOF'
-#!/bin/bash
-[[ "$USER" == "root" ]] && return
-clear
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo " SSH WS ACCOUNT ONLY"
-echo " SHELL ACCESS DENIED"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-sleep 2
-pkill -9 -u "$USER"
-EOF
-
-chmod +x /etc/profile.d/no-login.sh
-
 # ================= INSTALL LOG =================
 
 touch /root/log-install.txt
