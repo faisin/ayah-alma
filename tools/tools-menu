@@ -16,6 +16,7 @@ echo -e "${GREEN}[2]${NC} Speedtest VPS"
 echo -e "${GREEN}[3]${NC} Ganti Domain XRAY"
 echo -e "${GREEN}[4]${NC} Cek status layanan aktif"
 echo -e "${GREEN}[5]${NC} Jalankan Bot Telegram (Dana Kaget)"
+echo -e "${GREEN}[6]${NC} Subdomain Finder"
 echo -e "${GREEN}[x]${NC} Kembali ke menu utama"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 read -p "👉 Pilih opsi: " opt
@@ -37,6 +38,7 @@ case $opt in
     sleep 2
     tools-menu
     ;;
+6) bash /etc/ayah-alma/tools/subdomain-finder.sh ;;
 x|X) menu ;;
 *) echo "❌ Pilihan salah!" ; sleep 1 ; tools-menu ;;
 esac
