@@ -242,10 +242,10 @@ echo -e "${CYAN}└────────────────────�
 
 echo -e "${BLUE}┌──────────────── SERVICE ────────────────────┐${NC}"
 
-echo -e " ${GREEN}XRAY${NC}      : $XRAY  ${GREEN}NGINX${NC}     : $NGINX     "
-echo -e " ${GREEN}DROPBEAR${NC}  : $DROPBEAR  ${GREEN}WIREGUARD${NC} : $WG        "
-echo -e " ${GREEN}UDP CUSTOM${NC}: $UDPCUSTOM  ${GREEN}UDP ZIVPN${NC} : $ZIVPN     "
-echo -e " ${GREEN}SSH WS${NC}    : $DROPBEARWS ${GREEN}WSS${NC}       : $STUNNELWS "
+printf " ${GREEN}%-12s${NC} : %-10s  ${GREEN}%-12s${NC} : %-10s\n" "XRAY" "$XRAY" "NGINX" "$NGINX"
+printf " ${GREEN}%-12s${NC} : %-10s  ${GREEN}%-12s${NC} : %-10s\n" "DROPBEAR" "$DROPBEAR" "WIREGUARD" "$WG"
+printf " ${GREEN}%-12s${NC} : %-10s  ${GREEN}%-12s${NC} : %-10s\n" "UDP CUSTOM" "$UDPCUSTOM" "UDP ZIVPN" "$ZIVPN"
+printf " ${GREEN}%-12s${NC} : %-10s  ${GREEN}%-12s${NC} : %-10s\n" "SSH WS" "$DROPBEARWS" "WSS" "$STUNNELWS"
 
 echo -e "${BLUE}└─────────────────────────────────────────────┘${NC}"
 
