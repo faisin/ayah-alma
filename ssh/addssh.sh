@@ -13,21 +13,15 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "      MENU SSH ACCOUNT"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "  1. Buat Akun SSH Reguler"
-echo "  2. Buat Akun SSH Trial (1 Hari)"
+echo "  x. Kembali / Keluar"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-read -p "Pilih menu [1-2]: " menu_pilihan
+read -p "Pilih menu [1, x]: " menu_pilihan
 
-if [[ "$menu_pilihan" == "2" ]]; then
-    user="trial-$(</dev/urandom tr -dc 'a-z0-9' | head -c 4)"
-    pass="$user"
-    days="1"
-    limit_device="1"
-    
-    while id "$user" &>/dev/null; do
-        user="trial-$(</dev/urandom tr -dc 'a-z0-9' | head -c 4)"
-        pass="$user"
-    done
-else
+if [[ "$menu_pilihan" == "x" || "$menu_pilihan" == "X" ]]; then
+    exit 0
+fi
+
+if [[ "$menu_pilihan" == "1" ]]; then
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "      CREATE SSH ACCOUNT"
@@ -60,6 +54,9 @@ else
     if ! [[ "$limit_device" =~ ^[0-9]+$ ]]; then
         limit_device="1"
     fi
+else
+    echo "Pilihan tidak valid!"
+    exit 1
 fi
 
 EXP=$(date -d "$days days" +%Y-%m-%d)
@@ -86,7 +83,7 @@ ACCOUNT_FILE="/root/accounts/${user}.txt"
 
 cat > "$ACCOUNT_FILE" <<EOF
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-SSH ACCOUNT
+SSH ACCOUNT INFORMATION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Username     : $user
@@ -95,38 +92,35 @@ Expired      : $EXP
 Limit Device : $limit_device
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Domain   : $DOMAIN
-IP VPS   : $IP
-
-OpenSSH  : 22
-Dropbear : 109,143
-SSH WS   : 2082
-SSH WSS  : 2096
-UdpSSH   : 1-65535
-BadVPN   : 7300
-
+SERVER INFORMATION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-SSH UDP CUSTOM
+Domain       : $DOMAIN
+IP VPS       : $IP
 
+OpenSSH      : 22
+Dropbear     : 109, 143
+SSH WS       : 2082
+SSH WSS      : 2096
+UdpSSH       : 1-65535
+BadVPN       : 7300
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONNECTION FORMAT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+UDP CUSTOM
 $DOMAIN:1-65535@$user:$pass
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 SSH WS
-
 $DOMAIN:2082@$user:$pass
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 SSH WSS
-
 $DOMAIN:2096@$user:$pass
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Payload WS
+PAYLOAD WEBSOCKET
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 GET / HTTP/1.1[crlf]
 Host: $DOMAIN[crlf]
@@ -135,8 +129,8 @@ Connection: Upgrade[crlf]
 [crlf]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Payload Enhanced
+PAYLOAD ENHANCED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 GET / HTTP/1.1[crlf]
 Host: [host][crlf]
@@ -148,65 +142,9 @@ Connection: Upgrade[crlf]
 [crlf][split]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Saved File : $ACCOUNT_FILE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 EOF
 
 clear
-
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "       SSH ACCOUNT"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "Username       : $user"
-echo "Password       : $pass"
-echo "Expired        : $EXP"
-echo "Limit Device   : $limit_device"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "Domain         : $DOMAIN"
-echo "IP VPS         : $IP"
-echo ""
-echo "OpenSSH        : 22"
-echo "Dropbear       : 109,143"
-echo "SSH WS         : 2082"
-echo "SSH WSS        : 2096"
-echo "UdpSSH         : 1-65535"
-echo "BadVPN UDPGW   : 7300"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "SSH UDP CUSTOM"
-echo "$DOMAIN:1-65535@$user:$pass"
-echo ""
-echo "SSH WS"
-echo "$DOMAIN:2082@$user:$pass"
-echo ""
-echo "SSH WSS"
-echo "$DOMAIN:2096@$user:$pass"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Payload WS"
-echo ""
-echo "GET / HTTP/1.1[crlf]"
-echo "Host: $DOMAIN[crlf]"
-echo "Upgrade: websocket[crlf]"
-echo "Connection: Upgrade[crlf]"
-echo "[crlf]"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Payload Enhanced"
-echo ""
-echo "GET / HTTP/1.1[crlf]"
-echo "Host: [host][crlf]"
-echo "[crlf]"
-echo "PATCH / HTTP/1.1[crlf]"
-echo "Host: $DOMAIN[crlf]"
-echo "Upgrade: websocket[crlf]"
-echo "Connection: Upgrade[crlf]"
-echo "[crlf][split]"
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Saved To:"
-echo "$ACCOUNT_FILE"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+cat "$ACCOUNT_FILE"
