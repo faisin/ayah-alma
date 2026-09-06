@@ -2,7 +2,7 @@
 
 # ================= IP VALIDATION =================
 CURRENT_IP=$(curl -s ipv4.icanhazip.com)
-ALLOWED_IPS="108.136.245.45" # Ganti atau tambahkan IP yang diizinkan di sini
+ALLOWED_IPS="16.78.100.222" # Ganti atau tambahkan IP yang diizinkan di sini
 
 VALID=false
 for ip in $ALLOWED_IPS; do
