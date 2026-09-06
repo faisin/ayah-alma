@@ -244,13 +244,13 @@ wget -O tools/running.sh "${REPO_URL}/tools/running.sh"
 
 # Unduh Modul SSHWS / Python & Service
 wget -O sshws/ws-dropbear.py "${REPO_URL}/sshws/ws-dropbear.py"
-wget -O sshws/ws-stunnel.py "${REPO_URL}/sshws/ws-stunnel.py"
+wget -O sshws/stunnel-ws.py "${REPO_URL}/sshws/stunnel-ws.py"
 wget -O sshws/udp-custom.service "${REPO_URL}/sshws/udp-custom.service"
 wget -O sshws/udpgw.service "${REPO_URL}/sshws/udpgw.service"
 wget -O sshws/ws-dropbear.service "${REPO_URL}/sshws/ws-dropbear.service"
-wget -O sshws/ws-stunnel.service "${REPO_URL}/sshws/ws-stunnel.service"
+wget -O sshws/stunnel-ws.service "${REPO_URL}/sshws/stunnel-ws.service"
 
-# Unduh Source Go Dropbear-WS & Stunnel-WS (Koreksi Path Service Stunnel-WS)
+# Unduh Source Go Dropbear-WS & Stunnel-WS
 wget -O internal/go/dropbear-ws/main.go "${REPO_URL}/internal/go/dropbear-ws/main.go"
 wget -O internal/go/dropbear-ws/go.mod "${REPO_URL}/internal/go/dropbear-ws/go.mod" 2>/dev/null || true
 wget -O internal/go/stunnel-ws/main.go "${REPO_URL}/internal/go/stunnel-ws/main.go" 2>/dev/null || true
@@ -350,14 +350,14 @@ if [ -f "sshws/ws-dropbear.py" ]; then
     chmod +x /usr/local/bin/ws-dropbear.py
 fi
 
-if [ -f "sshws/ws-stunnel.py" ]; then
-    cp -f sshws/ws-stunnel.py /usr/local/bin/ws-stunnel.py
-    chmod +x /usr/local/bin/ws-stunnel.py
+if [ -f "sshws/stunnel-ws.py" ]; then
+    cp -f sshws/stunnel-ws.py /usr/local/bin/stunnel-ws.py
+    chmod +x /usr/local/bin/stunnel-ws.py
 fi
 
 systemctl daemon-reload
 
-for svc in xray nginx dropbear wg-quick@wg0 udp-custom zivpn dropbear-ws stunnel-ws ws-dropbear ws-stunnel udpgw; do
+for svc in xray nginx dropbear wg-quick@wg0 udp-custom zivpn dropbear-ws stunnel-ws ws-dropbear udpgw; do
     systemctl enable "$svc" 2>/dev/null || true
     systemctl restart "$svc" 2>/dev/null || true
 done
