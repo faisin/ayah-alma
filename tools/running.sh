@@ -21,7 +21,7 @@ services=(
   "udp-custom"
   "zivpn"
   "ws-dropbear"
-  "ws-stunnel"
+  "stunnel-ws"
 )
 
 for svc in "${services[@]}"; do
