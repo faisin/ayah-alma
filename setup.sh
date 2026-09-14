@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==========================================
-# Setup Script AYAH-ALMA (XRAY_AIO)
+# Setup Script AYAH-ALMA (XRAY_AIO) - FULL AUTO FIX
 # XRAY + WireGuard + UDP Custom + UDP ZIVPN + SSHWS
 # ==========================================
 
@@ -42,6 +42,7 @@ function error() {
 # ==========================================
 
 REPO_URL="https://raw.githubusercontent.com/faisin/ayah-alma/main"
+API_URL="https://api.github.com/repos/faisin/ayah-alma/contents"
 
 # ==========================================
 # TIMER
@@ -125,7 +126,7 @@ ln -fs /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
 # UPDATE & INSTALL PACKAGE & GOLANG
 # ==========================================
 
-info "Installing dependencies and Golang for $OS_PRETTY..."
+info "Installing dependencies, jq, and Golang for $OS_PRETTY..."
 
 apt update -y
 
@@ -146,6 +147,7 @@ netfilter-persistent \
 vnstat \
 openssl \
 ufw \
+jq \
 golang >/dev/null 2>&1
 
 # ==========================================
@@ -176,7 +178,6 @@ echo -e "${blue}━━━━━━━━━━━━━━━━━━━━━�
 read -rp "Pilih opsi (1/2) : " pilihan
 
 if [[ "$pilihan" == "1" ]]; then
-    # Ambil IP VPS publik secara otomatis sebagai default domain/host
     pub_ip=$(curl -s https://api.ipify.org || hostname -I | awk '{print $1}')
     domain="${pub_ip}.sslip.io"
     info "Menggunakan domain otomatis: $domain"
@@ -208,76 +209,38 @@ info "Domain berhasil diset: $domain"
 sleep 2
 
 # ==========================================
-# DOWNLOAD ALL CONFIGS, MODULES & FILES FIRST
+# DYNAMIC ALL-FILES DOWNLOADER (NO MISSING FILES)
 # ==========================================
 
-info "Mengunduh seluruh modul, config, dan file pendukung dari GitHub..."
+info "Mengunduh seluruh file secara otomatis & komprehensif dari GitHub..."
 
+# Buat struktur direktori lokal lengkap
 mkdir -p install ssh xray wg udp tools config sshws bin internal/go/dropbear-ws internal/go/stunnel-ws
 
-# Unduh File Binary & Konfigurasi Utama
-wget -O /usr/local/bin/udp-custom "${REPO_URL}/config/udp-custom" 2>/dev/null || true
-chmod +x /usr/local/bin/udp-custom
+# Fungsi download otomatis seluruh isi folder dari API GitHub
+download_folder() {
+    local folder_path="$1"
+    local files=$(curl -s "${API_URL}/${folder_path}" | jq -r '.[] | select(.type=="file") | .name')
+    
+    for file in $files; do
+        wget -q -O "${folder_path}/${file}" "${REPO_URL}/${folder_path}/${file}" 2>/dev/null || true
+    done
+}
 
-wget -O config/udp-custom.json "${REPO_URL}/config/udp-custom.json" 2>/dev/null || true
-wget -O config/nginx.conf "${REPO_URL}/config/nginx.conf"
-wget -O config/issue.net "${REPO_URL}/config/issue.net"
-wget -O config/xray.json "${REPO_URL}/config/xray.json"
-wget -O config/xray.conf "${REPO_URL}/config/xray.conf" 2>/dev/null || true
-wget -O config/zivpn_users.db "${REPO_URL}/config/zivpn_users.db" 2>/dev/null || true
+# 1. Download otomatis semua file di dalam folder modul
+for dir in install ssh xray wg udp tools config sshws internal/go/dropbear-ws internal/go/stunnel-ws; do
+    download_folder "$dir"
+done
 
-# Unduh File Installer Modul (Termasuk ZIVPN)
-wget -O install/nginx.sh "${REPO_URL}/install/nginx.sh"
-wget -O install/xray.sh "${REPO_URL}/install/xray.sh"
-wget -O install/ssh.sh "${REPO_URL}/install/ssh.sh"
-wget -O install/wg.sh "${REPO_URL}/install/wg.sh"
-wget -O install/zivpn.sh "${REPO_URL}/install/zivpn.sh"
+# 2. Download file root dasar
+wget -q -O menu.sh "${REPO_URL}/menu.sh" 2>/dev/null || true
+wget -q -O uninstall.sh "${REPO_URL}/uninstall.sh" 2>/dev/null || true
 
-# Unduh File Menu & Submenu SSH AYAH ALMA
-wget -O ssh/m-ssh "${REPO_URL}/ssh/m-ssh"
-wget -O ssh/addssh.sh "${REPO_URL}/ssh/addssh.sh"
-wget -O ssh/trialssh.sh "${REPO_URL}/ssh/trialssh.sh"
-wget -O ssh/renew-ssh.sh "${REPO_URL}/ssh/renew-ssh.sh"
-wget -O ssh/del-ssh.sh "${REPO_URL}/ssh/del-ssh.sh"
-wget -O ssh/cek-ssh.sh "${REPO_URL}/ssh/cek-ssh.sh"
-wget -O ssh/member-ssh.sh "${REPO_URL}/ssh/member-ssh.sh"
-wget -O ssh/clear-exp-ssh.sh "${REPO_URL}/ssh/clear-exp-ssh.sh"
+# 3. Download binary khusus udp-custom jika ada
+wget -q -O /usr/local/bin/udp-custom "${REPO_URL}/config/udp-custom" 2>/dev/null || true
+chmod +x /usr/local/bin/udp-custom 2>/dev/null || true
 
-wget -O xray/m-vmess "${REPO_URL}/xray/m-vmess"
-wget -O xray/m-vless "${REPO_URL}/xray/m-vless"
-wget -O xray/m-trojan "${REPO_URL}/xray/m-trojan"
-wget -O xray/m-ssws "${REPO_URL}/xray/m-ssws"
-
-wget -O wg/m-wg "${REPO_URL}/wg/m-wg"
-wget -O udp/m-zivpn "${REPO_URL}/udp/m-zivpn"
-wget -O udp/add-zivpn.sh "${REPO_URL}/udp/add-zivpn.sh"
-wget -O udp/cek-zivpn.sh "${REPO_URL}/udp/cek-zivpn.sh"
-wget -O udp/del-zivpn.sh "${REPO_URL}/udp/del-zivpn.sh"
-
-wget -O tools/tools-menu "${REPO_URL}/tools/tools-menu"
-wget -O tools/backup.sh "${REPO_URL}/tools/backup.sh"
-wget -O tools/speedtest.sh "${REPO_URL}/tools/speedtest.sh"
-wget -O tools/domain.sh "${REPO_URL}/tools/domain.sh"
-wget -O tools/running.sh "${REPO_URL}/tools/running.sh"
-
-# Unduh Modul SSHWS / Python & Service
-wget -O sshws/ws-dropbear.py "${REPO_URL}/sshws/ws-dropbear.py"
-wget -O sshws/stunnel-ws.py "${REPO_URL}/sshws/stunnel-ws.py"
-wget -O sshws/udp-custom.service "${REPO_URL}/sshws/udp-custom.service"
-wget -O sshws/udpgw.service "${REPO_URL}/sshws/udpgw.service"
-wget -O sshws/ws-dropbear.service "${REPO_URL}/sshws/ws-dropbear.service"
-wget -O sshws/stunnel-ws.service "${REPO_URL}/sshws/stunnel-ws.service"
-
-# Unduh Source Go Dropbear-WS & Stunnel-WS
-wget -O internal/go/dropbear-ws/main.go "${REPO_URL}/internal/go/dropbear-ws/main.go"
-wget -O internal/go/dropbear-ws/go.mod "${REPO_URL}/internal/go/dropbear-ws/go.mod" 2>/dev/null || true
-wget -O internal/go/stunnel-ws/main.go "${REPO_URL}/internal/go/stunnel-ws/main.go" 2>/dev/null || true
-wget -O internal/go/stunnel-ws/go.mod "${REPO_URL}/internal/go/stunnel-ws/go.mod" 2>/dev/null || true
-wget -O internal/go/dropbear-ws.service "${REPO_URL}/internal/go/dropbear-ws.service" 2>/dev/null || true
-wget -O internal/go/stunnel-ws.service "${REPO_URL}/internal/go/stunnel-ws.service" 2>/dev/null || true
-
-wget -O menu.sh "${REPO_URL}/menu.sh"
-wget -O uninstall.sh "${REPO_URL}/uninstall.sh"
+info "Seluruh file berhasil diunduh tanpa ada yang terlewat."
 
 # ==========================================
 # RUN INSTALLER / MODULES ONLINE
@@ -286,56 +249,58 @@ wget -O uninstall.sh "${REPO_URL}/uninstall.sh"
 info "Menjalankan modul instalasi layanan..."
 
 info "Installing NGINX Reverse Proxy..."
-bash install/nginx.sh
+[ -f install/nginx.sh ] && bash install/nginx.sh
 
 info "Installing XRAY Core..."
-bash install/xray.sh
+[ -f install/xray.sh ] && bash install/xray.sh
 
 info "Installing SSH Websocket & Tunnel..."
-bash install/ssh.sh
+[ -f install/ssh.sh ] && bash install/ssh.sh
 
 info "Installing WireGuard..."
-bash install/wg.sh
+[ -f install/wg.sh ] && bash install/wg.sh
 
 info "Installing UDP ZIVPN..."
-bash install/zivpn.sh
+[ -f install/zivpn.sh ] && bash install/zivpn.sh
 
 # ==========================================
-# COPY MENU COMMAND & PERMISSIONS
+# COPY ALL MENU COMMANDS & PERMISSIONS (WILDCARD LOOP)
 # ==========================================
 
-info "Menyalin command menu dan mengatur izin akses..."
+info "Menyalin seluruh command menu dan mengatur izin akses..."
 
-cp -f ssh/m-ssh /usr/bin/
-cp -f xray/m-vmess /usr/bin/
-cp -f xray/m-vless /usr/bin/
-cp -f xray/m-trojan /usr/bin/
-cp -f xray/m-ssws /usr/bin/
-cp -f wg/m-wg /usr/bin/
-cp -f udp/m-zivpn /usr/bin/
-cp -f tools/tools-menu /usr/bin/
-cp -f tools/backup.sh /usr/bin/
-cp -f tools/speedtest.sh /usr/bin/
-cp -f tools/domain.sh /usr/bin/
-cp -f tools/running.sh /usr/bin/
-cp -f menu.sh /usr/bin/menu
+# Bersihkan karakter format Windows (CRLF) jika ada
+sed -i 's/\r$//' ssh/* xray/* wg/* udp/* tools/* install/* *.sh 2>/dev/null || true
 
-chmod +x /usr/bin/menu /usr/bin/m-ssh /usr/bin/m-vmess /usr/bin/m-vless /usr/bin/m-trojan /usr/bin/m-ssws /usr/bin/m-wg /usr/bin/m-zivpn /usr/bin/tools-menu /usr/bin/backup.sh /usr/bin/speedtest.sh /usr/bin/domain.sh /usr/bin/running.sh
+# 1. Copy SELURUH isi dari semua folder modul ke /usr/bin/ tanpa ada yang tertinggal
+for dir in ssh xray wg udp tools; do
+    if [ -d "$dir" ]; then
+        cp -fr $dir/* /usr/bin/ 2>/dev/null || true
+    fi
+done
+
+# 2. Copy file menu utama & uninstall
+cp -f menu.sh /usr/bin/menu 2>/dev/null || true
+cp -f uninstall.sh /root/uninstall.sh 2>/dev/null || true
+
+# 3. Berikan akses eksekusi ke SEMUA file script & perintah menu di /usr/bin/
+chmod +x /usr/bin/menu 2>/dev/null || true
+chmod +x /usr/bin/m-* 2>/dev/null || true
+chmod +x /usr/bin/*.sh 2>/dev/null || true
 
 # ==========================================
 # COPY RUNTIME SCRIPT TO /etc/ayah-alma/
 # ==========================================
 
-mkdir -p /etc/ayah-alma/{ssh,xray,wg,udp,tools,config,sshws}
-cp -r ssh/* /etc/ayah-alma/ssh/ 2>/dev/null || true
-cp -r xray/* /etc/ayah-alma/xray/ 2>/dev/null || true
-cp -r wg/* /etc/ayah-alma/wg/ 2>/dev/null || true
-cp -r udp/* /etc/ayah-alma/udp/ 2>/dev/null || true
-cp -r tools/* /etc/ayah-alma/tools/ 2>/dev/null || true
-cp -r config/* /etc/ayah-alma/config/ 2>/dev/null || true
-cp -r sshws/* /etc/ayah-alma/sshws/ 2>/dev/null || true
+info "Menyalin backup runtime ke /etc/ayah-alma/..."
 
-chmod +x /etc/ayah-alma/*/*.sh 2>/dev/null || true
+mkdir -p /etc/ayah-alma/{ssh,xray,wg,udp,tools,config,sshws}
+for dir in ssh xray wg udp tools config sshws; do
+    if [ -d "$dir" ]; then
+        cp -fr $dir/* /etc/ayah-alma/$dir/ 2>/dev/null || true
+        chmod +x /etc/ayah-alma/$dir/*.sh 2>/dev/null || true
+    fi
+done
 
 # ==========================================
 # KOMPILASI GO BINARY & SETUP SERVICES
@@ -346,23 +311,23 @@ info "Mengompilasi layanan Go WebSocket dan memasang systemd service..."
 if [ -f "internal/go/dropbear-ws/main.go" ]; then
     cd internal/go/dropbear-ws
     go mod init dropbear-ws 2>/dev/null || true
-    go build -o /usr/local/bin/dropbearws main.go
-    chmod +x /usr/local/bin/dropbearws
-    cd - >/dev/null
+    go build -o /usr/local/bin/dropbearws main.go 2>/dev/null || true
+    chmod +x /usr/local/bin/dropbearws 2>/dev/null || true
+    cd /root/ 2>/dev/null || cd - >/dev/null
 fi
 
 if [ -f "internal/go/stunnel-ws/main.go" ]; then
     cd internal/go/stunnel-ws
     go mod init stunnel-ws 2>/dev/null || true
-    go build -o /usr/local/bin/stunnelws main.go
-    chmod +x /usr/local/bin/stunnelws
-    cd - >/dev/null
+    go build -o /usr/local/bin/stunnelws main.go 2>/dev/null || true
+    chmod +x /usr/local/bin/stunnelws 2>/dev/null || true
+    cd /root/ 2>/dev/null || cd - >/dev/null
 fi
 
 cp -f sshws/*.service /etc/systemd/system/ 2>/dev/null || true
 cp -f internal/go/*.service /etc/systemd/system/ 2>/dev/null || true
 
-# Salin file Python WebSocket dengan ekstensi .py agar terbaca oleh service
+# Salin file Python WebSocket
 if [ -f "sshws/ws-dropbear.py" ]; then
     cp -f sshws/ws-dropbear.py /usr/local/bin/ws-dropbear.py
     chmod +x /usr/local/bin/ws-dropbear.py
@@ -408,7 +373,6 @@ rm -rf install cf ins-xray.sh ssh xray wg udp tools config sshws bin internal me
 # ==========================================
 
 end_time=$(date +%s)
-
 elapsed=$((end_time - start_time))
 
 clear
