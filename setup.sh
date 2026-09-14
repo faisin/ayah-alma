@@ -68,6 +68,23 @@ if [ "$(systemd-detect-virt)" == "openvz" ]; then
 fi
 
 # ==========================================
+# AUTOMATIC OS & VERSION DETECTION
+# ==========================================
+
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    OS_NAME=$NAME
+    OS_VERSION=$VERSION_ID
+    OS_PRETTY=$PRETTY_NAME
+else
+    error "Sistem operasi tidak dapat dideteksi!"
+    exit 1
+fi
+
+info "Mendeteksi OS: $OS_PRETTY"
+sleep 1
+
+# ==========================================
 # FIX /etc/hosts
 # ==========================================
 
@@ -96,6 +113,7 @@ for file in domain scdomain; do
 done
 
 touch /var/lib/ipvps.conf
+echo "OS=$OS_PRETTY" >> /var/lib/ipvps.conf
 
 # ==========================================
 # SET TIMEZONE
@@ -107,7 +125,7 @@ ln -fs /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
 # UPDATE & INSTALL PACKAGE & GOLANG
 # ==========================================
 
-info "Installing dependencies and Golang..."
+info "Installing dependencies and Golang for $OS_PRETTY..."
 
 apt update -y
 
@@ -400,6 +418,7 @@ echo -e "${green}      INSTALLATION DONE       ${NC}"
 echo -e "${blue}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 echo -e " Project     : AYAH-ALMA AIO"
+echo -e " OS System   : $OS_PRETTY"
 echo -e " SSH & WS    : INSTALLED & COMPILED"
 echo -e " XRAY        : INSTALLED"
 echo -e " WireGuard   : INSTALLED"
