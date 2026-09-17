@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	ListenAddr = "0.0.0.0:2096"
+	ListenAddr = "127.0.0.1:2096"
 	DefaultHost = "127.0.0.1:109"
 	Password = ""
 )
