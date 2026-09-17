@@ -10,7 +10,7 @@ import (
 )
 
 const (
-        ListenAddr = "0.0.0.0:2082"
+        ListenAddr = "127.0.0.1:2082"
         TargetAddr = "127.0.0.1:109"
 
         BufLen = 4096 * 4
