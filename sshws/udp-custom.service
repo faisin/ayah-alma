@@ -1,0 +1,14 @@
+[Unit]
+Description=UDP Custom Service - by Ayah Alma
+After=network.target
+
+[Service]
+User=root
+Type=simple
+WorkingDirectory=/etc/udp-custom
+ExecStart=/usr/local/bin/udp-custom server -c /etc/udp-custom/config.json -exclude 7300
+Restart=always
+RestartSec=3s
+
+[Install]
+WantedBy=multi-user.target
