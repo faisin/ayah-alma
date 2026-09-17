@@ -6,7 +6,11 @@
 
 echo "" > /root/log-install.txt
 
-cd "$(dirname "$0")"
+SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
+cd "$SCRIPT_DIR" || {
+    error "Gagal masuk ke direktori script: $SCRIPT_DIR"
+    exit 1
+}
 
 clear
 
@@ -35,6 +39,16 @@ function warn() {
 
 function error() {
     echo -e "${red}[ERROR]${NC} $1"
+}
+
+# Jalankan perintah wajib. Jika gagal, instalasi langsung dihentikan.
+run_required() {
+    local description="$1"
+    shift
+    if ! "$@"; then
+        error "$description gagal."
+        exit 1
+    fi
 }
 
 # ==========================================
@@ -128,9 +142,12 @@ ln -fs /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
 
 info "Installing dependencies, jq, and Golang for $OS_PRETTY..."
 
-apt update -y
+if ! apt update -y; then
+    error "apt update gagal."
+    exit 1
+fi
 
-apt install -y \
+if ! apt install -y \
 curl \
 wget \
 git \
@@ -148,7 +165,10 @@ vnstat \
 openssl \
 ufw \
 jq \
-golang >/dev/null 2>&1
+golang >/dev/null 2>&1; then
+    error "Instalasi dependency gagal."
+    exit 1
+fi
 
 # ==========================================
 # INSTALL LINUX HEADER
@@ -159,7 +179,10 @@ headerpkg="linux-headers-$kernelver"
 
 if ! dpkg -s $headerpkg >/dev/null 2>&1; then
     info "Installing $headerpkg..."
-    apt install -y $headerpkg
+    if ! apt install -y "$headerpkg"; then
+        error "Gagal memasang kernel header: $headerpkg"
+        exit 1
+    fi
 fi
 
 # ==========================================
@@ -178,7 +201,17 @@ echo -e "${blue}━━━━━━━━━━━━━━━━━━━━━�
 read -rp "Pilih opsi (1/2) : " pilihan
 
 if [[ "$pilihan" == "1" ]]; then
-    pub_ip=$(curl -s https://api.ipify.org || hostname -I | awk '{print $1}')
+    pub_ip=$(curl -fsS https://api.ipify.org 2>/dev/null || true)
+
+    if [[ -z "$pub_ip" ]]; then
+        pub_ip=$(hostname -I | awk '{print $1}')
+    fi
+
+    if [[ -z "$pub_ip" ]]; then
+        error "Gagal mendapatkan IP publik. IP kosong, instalasi dihentikan."
+        exit 1
+    fi
+
     domain="${pub_ip}.sslip.io"
     info "Menggunakan domain otomatis: $domain"
 elif [[ "$pilihan" == "2" ]]; then
@@ -201,7 +234,10 @@ for dfile in domain scdomain; do
     echo "$domain" > /root/$dfile
 done
 
-echo "IP=$domain" > /var/lib/ipvps.conf
+cat > /var/lib/ipvps.conf <<EOF
+OS=$OS_PRETTY
+IP=$domain
+EOF
 
 echo ""
 info "Domain berhasil diset: $domain"
@@ -217,28 +253,64 @@ info "Mengunduh seluruh file secara otomatis & komprehensif dari GitHub..."
 # Buat struktur direktori lokal lengkap
 mkdir -p install ssh xray wg udp tools config sshws bin internal/go/dropbear-ws internal/go/stunnel-ws
 
-# Fungsi download otomatis seluruh isi folder dari API GitHub
+# Download per-file melalui GitHub Contents API. File wajib yang gagal -> STOP.
 download_folder() {
     local folder_path="$1"
-    local files=$(curl -s "${API_URL}/${folder_path}" | jq -r '.[] | select(.type=="file") | .name')
-    
-    for file in $files; do
-        wget -q -O "${folder_path}/${file}" "${REPO_URL}/${folder_path}/${file}" 2>/dev/null || true
-    done
+    local api_response
+    local files
+
+    api_response=$(curl -fsSL "${API_URL}/${folder_path}") || {
+        error "Gagal mengambil daftar file: $folder_path"
+        exit 1
+    }
+
+    files=$(printf '%s' "$api_response" | jq -er '.[] | select(.type=="file") | .name') || {
+        error "Gagal membaca daftar file GitHub: $folder_path"
+        exit 1
+    }
+
+    while IFS= read -r file; do
+        [ -n "$file" ] || continue
+        if ! wget -q -O "${folder_path}/${file}" "${REPO_URL}/${folder_path}/${file}"; then
+            error "Gagal mengunduh: ${folder_path}/${file}"
+            exit 1
+        fi
+        [ -s "${folder_path}/${file}" ] || {
+            error "File hasil download kosong: ${folder_path}/${file}"
+            exit 1
+        }
+    done <<< "$files"
 }
 
-# 1. Download otomatis semua file di dalam folder modul
 for dir in install ssh xray wg udp tools config sshws internal/go/dropbear-ws internal/go/stunnel-ws; do
     download_folder "$dir"
 done
 
-# 2. Download file root dasar
-wget -q -O menu.sh "${REPO_URL}/menu.sh" 2>/dev/null || true
-wget -q -O uninstall.sh "${REPO_URL}/uninstall.sh" 2>/dev/null || true
+# File root wajib
+for file in menu.sh uninstall.sh; do
+    if ! wget -q -O "$file" "${REPO_URL}/${file}"; then
+        error "Gagal mengunduh: $file"
+        exit 1
+    fi
+    [ -s "$file" ] || {
+        error "File hasil download kosong: $file"
+        exit 1
+    }
+done
 
-# 3. Download binary khusus udp-custom jika ada
-wget -q -O /usr/local/bin/udp-custom "${REPO_URL}/config/udp-custom" 2>/dev/null || true
-chmod +x /usr/local/bin/udp-custom 2>/dev/null || true
+# Binary khusus UDP Custom wajib
+if ! wget -q -O /usr/local/bin/udp-custom "${REPO_URL}/config/udp-custom"; then
+    error "Gagal mengunduh binary udp-custom."
+    exit 1
+fi
+[ -s /usr/local/bin/udp-custom ] || {
+    error "Binary udp-custom kosong setelah download."
+    exit 1
+}
+chmod +x /usr/local/bin/udp-custom || {
+    error "Gagal memberi izin eksekusi pada udp-custom."
+    exit 1
+}
 
 info "Seluruh file berhasil diunduh tanpa ada yang terlewat."
 
@@ -249,19 +321,43 @@ info "Seluruh file berhasil diunduh tanpa ada yang terlewat."
 info "Menjalankan modul instalasi layanan..."
 
 info "Installing NGINX Reverse Proxy..."
-[ -f install/nginx.sh ] && bash install/nginx.sh
+[ -f install/nginx.sh ] || { error "install/nginx.sh tidak ditemukan."; exit 1; }
+bash install/nginx.sh || { error "Instalasi NGINX gagal."; exit 1; }
 
 info "Installing XRAY Core..."
-[ -f install/xray.sh ] && bash install/xray.sh
+[ -f install/xray.sh ] || { error "install/xray.sh tidak ditemukan."; exit 1; }
+bash install/xray.sh || { error "Instalasi XRAY gagal."; exit 1; }
 
 info "Installing SSH Websocket & Tunnel..."
-[ -f install/ssh.sh ] && bash install/ssh.sh
+[ -f install/ssh.sh ] || { error "install/ssh.sh tidak ditemukan."; exit 1; }
+bash install/ssh.sh || { error "Instalasi SSH Websocket & Tunnel gagal."; exit 1; }
+
+# Validasi hasil installer SSH. install/ssh.sh versi lama masih dapat
+# mengembalikan status 0 walaupun sebagian proses internal gagal.
+[ -f /etc/default/dropbear ] || { error "Konfigurasi Dropbear tidak terpasang."; exit 1; }
+[ -f /etc/issue.net ] || { error "Banner SSH /etc/issue.net tidak terpasang."; exit 1; }
+[ -f /etc/systemd/system/dropbear.service ] || { error "dropbear.service tidak terpasang."; exit 1; }
+
+# BadVPN wajib tersedia karena udpgw.service menggunakannya.
+if [ -f sshws/badvpn-udpgw ]; then
+    cp -f sshws/badvpn-udpgw /usr/local/bin/badvpn-udpgw || { error "Gagal memasang badvpn-udpgw."; exit 1; }
+elif [ -f bin/badvpn-udpgw ]; then
+    cp -f bin/badvpn-udpgw /usr/local/bin/badvpn-udpgw || { error "Gagal memasang badvpn-udpgw."; exit 1; }
+else
+    error "Binary badvpn-udpgw tidak ditemukan."
+    exit 1
+fi
+
+[ -s /usr/local/bin/badvpn-udpgw ] || { error "Binary badvpn-udpgw kosong."; exit 1; }
+chmod +x /usr/local/bin/badvpn-udpgw || { error "Gagal memberi izin badvpn-udpgw."; exit 1; }
 
 info "Installing WireGuard..."
-[ -f install/wg.sh ] && bash install/wg.sh
+[ -f install/wg.sh ] || { error "install/wg.sh tidak ditemukan."; exit 1; }
+bash install/wg.sh || { error "Instalasi WireGuard gagal."; exit 1; }
 
 info "Installing UDP ZIVPN..."
-[ -f install/zivpn.sh ] && bash install/zivpn.sh
+[ -f install/zivpn.sh ] || { error "install/zivpn.sh tidak ditemukan."; exit 1; }
+bash install/zivpn.sh || { error "Instalasi UDP ZIVPN gagal."; exit 1; }
 
 # ==========================================
 # COPY ALL MENU COMMANDS & PERMISSIONS (WILDCARD LOOP)
@@ -272,21 +368,26 @@ info "Menyalin seluruh command menu dan mengatur izin akses..."
 # Bersihkan karakter format Windows (CRLF) jika ada
 sed -i 's/\r$//' ssh/* xray/* wg/* udp/* tools/* install/* *.sh 2>/dev/null || true
 
-# 1. Copy SELURUH isi dari semua folder modul ke /usr/bin/ tanpa ada yang tertinggal
+# 1. Copy SELURUH isi dari semua folder modul ke /usr/bin/
 for dir in ssh xray wg udp tools; do
     if [ -d "$dir" ]; then
-        cp -fr $dir/* /usr/bin/ 2>/dev/null || true
+        cp -fr "$dir"/* /usr/bin/ || { error "Gagal menyalin folder $dir ke /usr/bin/."; exit 1; }
+    else
+        error "Folder $dir tidak ditemukan."
+        exit 1
     fi
 done
 
 # 2. Copy file menu utama & uninstall
-cp -f menu.sh /usr/bin/menu 2>/dev/null || true
-cp -f uninstall.sh /root/uninstall.sh 2>/dev/null || true
+cp -f menu.sh /usr/bin/menu || { error "Gagal memasang menu."; exit 1; }
+cp -f uninstall.sh /root/uninstall.sh || { error "Gagal memasang uninstall.sh."; exit 1; }
 
-# 3. Berikan akses eksekusi ke SEMUA file script & perintah menu di /usr/bin/
-chmod +x /usr/bin/menu 2>/dev/null || true
-chmod +x /usr/bin/m-* 2>/dev/null || true
-chmod +x /usr/bin/*.sh 2>/dev/null || true
+# 3. Berikan akses eksekusi ke command utama
+chmod +x /usr/bin/menu || { error "Gagal memberi izin eksekusi pada menu."; exit 1; }
+for f in /usr/bin/m-* /usr/bin/*.sh; do
+    [ -e "$f" ] || continue
+    chmod +x "$f" || { error "Gagal memberi izin eksekusi: $f"; exit 1; }
+done
 
 # ==========================================
 # COPY RUNTIME SCRIPT TO /etc/ayah-alma/
@@ -297,8 +398,11 @@ info "Menyalin backup runtime ke /etc/ayah-alma/..."
 mkdir -p /etc/ayah-alma/{ssh,xray,wg,udp,tools,config,sshws}
 for dir in ssh xray wg udp tools config sshws; do
     if [ -d "$dir" ]; then
-        cp -fr $dir/* /etc/ayah-alma/$dir/ 2>/dev/null || true
-        chmod +x /etc/ayah-alma/$dir/*.sh 2>/dev/null || true
+        cp -fr "$dir"/* /etc/ayah-alma/$dir/ || { error "Gagal menyalin runtime $dir."; exit 1; }
+        for f in /etc/ayah-alma/$dir/*.sh; do
+            [ -e "$f" ] || continue
+            chmod +x "$f" || { error "Gagal memberi izin eksekusi: $f"; exit 1; }
+        done
     fi
 done
 
@@ -309,40 +413,44 @@ done
 info "Mengompilasi layanan Go WebSocket dan memasang systemd service..."
 
 if [ -f "internal/go/dropbear-ws/main.go" ]; then
-    cd internal/go/dropbear-ws
-    go mod init dropbear-ws 2>/dev/null || true
-    go build -o /usr/local/bin/dropbearws main.go 2>/dev/null || true
-    chmod +x /usr/local/bin/dropbearws 2>/dev/null || true
-    cd /root/ 2>/dev/null || cd - >/dev/null
+    cd "$SCRIPT_DIR/internal/go/dropbear-ws" || { error "Gagal masuk ke direktori dropbear-ws."; exit 1; }
+    if [ ! -f go.mod ]; then
+        go mod init dropbear-ws || { error "Gagal membuat go.mod dropbear-ws."; exit 1; }
+    fi
+    go build -o /usr/local/bin/dropbearws main.go || { error "Build dropbearws gagal."; exit 1; }
+    chmod +x /usr/local/bin/dropbearws || { error "Gagal memberi izin dropbearws."; exit 1; }
+    cd "$SCRIPT_DIR" || exit 1
 fi
 
 if [ -f "internal/go/stunnel-ws/main.go" ]; then
-    cd internal/go/stunnel-ws
-    go mod init stunnel-ws 2>/dev/null || true
-    go build -o /usr/local/bin/stunnelws main.go 2>/dev/null || true
-    chmod +x /usr/local/bin/stunnelws 2>/dev/null || true
-    cd /root/ 2>/dev/null || cd - >/dev/null
+    cd "$SCRIPT_DIR/internal/go/stunnel-ws" || { error "Gagal masuk ke direktori stunnel-ws."; exit 1; }
+    if [ ! -f go.mod ]; then
+        go mod init stunnel-ws || { error "Gagal membuat go.mod stunnel-ws."; exit 1; }
+    fi
+    go build -o /usr/local/bin/stunnelws main.go || { error "Build stunnelws gagal."; exit 1; }
+    chmod +x /usr/local/bin/stunnelws || { error "Gagal memberi izin stunnelws."; exit 1; }
+    cd "$SCRIPT_DIR" || exit 1
 fi
 
-cp -f sshws/*.service /etc/systemd/system/ 2>/dev/null || true
-cp -f internal/go/*.service /etc/systemd/system/ 2>/dev/null || true
+# Pasang hanya service SSHWS yang memang dipakai:
+# - udpgw.service dan udp-custom.service berasal dari sshws/
+# - dropbear-ws.service dan stunnel-ws.service berasal dari internal/go/
+cp -f sshws/udpgw.service /etc/systemd/system/ || { error "Gagal memasang udpgw.service."; exit 1; }
+cp -f sshws/udp-custom.service /etc/systemd/system/ || { error "Gagal memasang udp-custom.service."; exit 1; }
+cp -f internal/go/dropbear-ws.service /etc/systemd/system/ || { error "Gagal memasang dropbear-ws.service."; exit 1; }
+cp -f internal/go/stunnel-ws.service /etc/systemd/system/ || { error "Gagal memasang stunnel-ws.service."; exit 1; }
 
-# Salin file Python WebSocket
-if [ -f "sshws/ws-dropbear.py" ]; then
-    cp -f sshws/ws-dropbear.py /usr/local/bin/ws-dropbear.py
-    chmod +x /usr/local/bin/ws-dropbear.py
-fi
+systemctl daemon-reload || { error "systemd daemon-reload gagal."; exit 1; }
 
-if [ -f "sshws/stunnel-ws.py" ]; then
-    cp -f sshws/stunnel-ws.py /usr/local/bin/stunnel-ws.py
-    chmod +x /usr/local/bin/stunnel-ws.py
-fi
-
-systemctl daemon-reload
-
-for svc in xray nginx dropbear wg-quick@wg0 udp-custom zivpn dropbear-ws stunnel-ws ws-dropbear udpgw; do
-    systemctl enable "$svc" 2>/dev/null || true
-    systemctl restart "$svc" 2>/dev/null || true
+# Hanya service yang memang dibuat/dibutuhkan oleh installer.
+# ws-dropbear tidak dipanggil karena ssh.sh memasangnya sebagai dropbear-ws.service.
+for svc in xray nginx dropbear wg-quick@wg0 udp-custom zivpn dropbear-ws stunnel-ws udpgw; do
+    if ! systemctl cat "$svc" >/dev/null 2>&1; then
+        error "Service wajib tidak ditemukan: $svc"
+        exit 1
+    fi
+    systemctl enable "$svc" || { error "Gagal enable service: $svc"; exit 1; }
+    systemctl restart "$svc" || { error "Gagal restart service: $svc"; exit 1; }
 done
 
 # ==========================================
@@ -366,7 +474,8 @@ chmod 644 /root/.profile
 # CLEAN FILE
 # ==========================================
 
-rm -rf install cf ins-xray.sh ssh xray wg udp tools config sshws bin internal menu.sh uninstall.sh
+cd "$SCRIPT_DIR" || exit 1
+rm -rf install cf ins-xray.sh ssh xray wg udp tools config sshws bin internal menu.sh uninstall.sh || true
 
 # ==========================================
 # FINISH
