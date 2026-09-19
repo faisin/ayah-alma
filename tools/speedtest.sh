@@ -8,6 +8,7 @@ WHITE='\e[1;37m'
 NC='\e[0m'
 
 clear
+
 echo -e ""
 echo -e "${CYAN}  ┌────────────────────────────────────────┐${NC}"
 echo -e "${CYAN}  │${YELLOW}            🌐 SPEEDTEST VPS            ${CYAN}│${NC}"
@@ -15,24 +16,34 @@ echo -e "${CYAN}  └───────────────────�
 echo -e ""
 
 if ! command -v speedtest &> /dev/null; then
-    echo -e " ${YELLOW}⚠️  Speedtest belum terinstall, menginstall...${NC}"
-    apt-get update -y >/dev/null 2>&1
-    apt-get install speedtest-cli -y >/dev/null 2>&1
-    echo -e ""
+    echo -e " ${YELLOW}⚠️ Speedtest belum terinstall${NC}"
+    exit 1
 fi
 
 echo -e " ${CYAN}⏳ Sedang menguji koneksi, mohon tunggu...${NC}"
-echo -e ""
+echo ""
+
 echo -e "${WHITE}"
-speedtest --simple
+
+if speedtest -f human-readable; then
+    RESULT=0
+else
+    RESULT=1
+fi
+
 echo -e "${NC}"
 
 echo -e "${CYAN}  ──────────────────────────────────────────${NC}"
-echo -e " ${GREEN}✔  Pengujian Selesai${NC}"
+
+if [ $RESULT -eq 0 ]; then
+    echo -e " ${GREEN}✔ Pengujian Selesai${NC}"
+else
+    echo -e " ${YELLOW}⚠️ Pengujian Gagal${NC}"
+fi
+
 echo -e "${CYAN}  ──────────────────────────────────────────${NC}"
-echo -e ""
+echo ""
 
 read -n 1 -s -r -p " Tekan tombol apa saja untuk kembali ke menu..."
 
-# Mengembalikan langsung ke menu utama (ganti 'menu' dengan perintah/path menu Anda jika berbeda)
 menu
