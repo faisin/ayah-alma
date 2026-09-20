@@ -329,7 +329,7 @@ case $menu in
 6) m-wg ;;
 7) m-zivpn ;;
 8) tools-menu ;;
-9) running ;;
+9) bash /usr/bin/running.sh ;;
 10) clearcache ;;
 11) reboot ;;
 12) bash /root/uninstall.sh ;;
