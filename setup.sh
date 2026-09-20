@@ -74,30 +74,12 @@ else
 fi
 
 # ================= LICENSE CHECK =================
-LICENSE_FILE="$BASE_DIR/config/license.conf"
-[[ -f "$LICENSE_FILE" ]] || die "File lisensi tidak ditemukan: config/license.conf"
+[[ -x "$BASE_DIR/license" ]] || die "License checker tidak ditemukan."
 
-# shellcheck disable=SC1090
-source "$LICENSE_FILE"
+"$BASE_DIR/license" || die "IP VPS tidak memiliki lisensi."
+info "Lisensi valid."
 
-declare -p ALLOWED_IPS >/dev/null 2>&1 || die "ALLOWED_IPS tidak ditemukan di license.conf."
-(( ${#ALLOWED_IPS[@]} > 0 )) || die "Daftar lisensi kosong."
-
-PUBLIC_IP=$(curl -4fsS --max-time 10 https://api.ipify.org 2>/dev/null || true)
-[[ "$PUBLIC_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "IP publik VPS tidak berhasil dideteksi."
-
-LICENSE_OK=false
-for allowed_ip in "${ALLOWED_IPS[@]}"; do
-    if [[ "$PUBLIC_IP" == "$allowed_ip" ]]; then
-        LICENSE_OK=true
-        break
-    fi
-done
-
-[[ "$LICENSE_OK" == true ]] || die "IP VPS $PUBLIC_IP tidak memiliki lisensi."
-info "Lisensi valid untuk IP: $PUBLIC_IP"
-
-required=(install/nginx.sh install/xray.sh install/ssh.sh install/wg.sh install/zivpn.sh "bin/$ARCH/xray" "bin/$ARCH/zivpn" "bin/$ARCH/badvpn-udpgw" "bin/$ARCH/udp-custom" config/nginx.conf config/xray.conf config/xray.json config/license.conf config/udp-custom config/udp-custom.json config/issue.net sshws/udpgw.service sshws/udp-custom.service internal/go/dropbear-ws/main.go internal/go/dropbear-ws.service internal/go/stunnel-ws/main.go internal/go/stunnel-ws.service menu.sh uninstall.sh clearcache)
+required=(install/nginx.sh install/xray.sh install/ssh.sh install/wg.sh install/zivpn.sh "bin/$ARCH/xray" "bin/$ARCH/zivpn" "bin/$ARCH/badvpn-udpgw" "bin/$ARCH/udp-custom" config/nginx.conf config/xray.conf config/xray.json config/license.conf license config/udp-custom config/udp-custom.json config/issue.net sshws/udpgw.service sshws/udp-custom.service internal/go/dropbear-ws/main.go internal/go/dropbear-ws.service internal/go/stunnel-ws/main.go internal/go/stunnel-ws.service menu.sh uninstall.sh clearcache)
 for rel in "${required[@]}"; do [[ -f "$BASE_DIR/$rel" ]] || die "File wajib tidak ditemukan: $rel"; done
 cd "$BASE_DIR"
 
