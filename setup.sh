@@ -74,10 +74,31 @@ else
 fi
 
 # ================= LICENSE CHECK =================
-[[ -f "$BASE_DIR/license" ]] || die "License checker tidak ditemukan."
-chmod +x "$BASE_DIR/license"
-"$BASE_DIR/license" || die "IP VPS tidak memiliki lisensi."
-info "Lisensi valid."
+LICENSE_FILE="$BASE_DIR/config/license.conf"
+
+[[ -f "$LICENSE_FILE" ]] || die "File license.conf tidak ditemukan."
+
+source "$LICENSE_FILE"
+
+declare -p ALLOWED_IPS >/dev/null 2>&1 || die "Konfigurasi lisensi tidak valid."
+
+PUBLIC_IP=$(curl -4fsS --max-time 10 https://api.ipify.org 2>/dev/null || true)
+
+[[ "$PUBLIC_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+    || die "Gagal mendapatkan IP VPS."
+
+LICENSE_VALID=false
+
+for allowed_ip in "${ALLOWED_IPS[@]}"; do
+    if [[ "$PUBLIC_IP" == "$allowed_ip" ]]; then
+        LICENSE_VALID=true
+        break
+    fi
+don
+
+[[ "$LICENSE_VALID" == true ]] || die "IP VPS tidak memiliki lisensi."
+
+info "Lisensi valid: $PUBLIC_IP"
 
 required=(install/nginx.sh install/xray.sh install/ssh.sh install/wg.sh install/zivpn.sh "bin/$ARCH/xray" "bin/$ARCH/zivpn" "bin/$ARCH/badvpn-udpgw" "bin/$ARCH/udp-custom" config/nginx.conf config/xray.conf config/xray.json config/license.conf license config/udp-custom config/udp-custom.json config/issue.net sshws/udpgw.service sshws/udp-custom.service internal/go/dropbear-ws/main.go internal/go/dropbear-ws.service internal/go/stunnel-ws/main.go internal/go/stunnel-ws.service menu.sh uninstall.sh clearcache)
 for rel in "${required[@]}"; do [[ -f "$BASE_DIR/$rel" ]] || die "File wajib tidak ditemukan: $rel"; done
