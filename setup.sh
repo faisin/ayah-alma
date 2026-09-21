@@ -74,13 +74,24 @@ else
 fi
 
 # ================= LICENSE CHECK =================
+# license.conf selalu diambil langsung dari branch main.
+LICENSE_URL="https://raw.githubusercontent.com/faisin/ayah-alma/main/config/license.conf"
 LICENSE_FILE="$BASE_DIR/config/license.conf"
 
-[[ -f "$LICENSE_FILE" ]] || die "File license.conf tidak ditemukan."
+info "Mengambil konfigurasi lisensi dari main..."
+
+mkdir -p "$(dirname "$LICENSE_FILE")"
+
+wget -q --https-only -O "$LICENSE_FILE" "$LICENSE_URL" \
+    || die "Gagal mengambil license.conf dari repository main."
+
+[[ -s "$LICENSE_FILE" ]] \
+    || die "license.conf dari repository main kosong."
 
 source "$LICENSE_FILE"
 
-declare -p ALLOWED_IPS >/dev/null 2>&1 || die "Konfigurasi lisensi tidak valid."
+declare -p ALLOWED_IPS >/dev/null 2>&1 \
+    || die "Konfigurasi lisensi tidak valid: ALLOWED_IPS tidak ditemukan."
 
 PUBLIC_IP=$(curl -4fsS --max-time 10 https://api.ipify.org 2>/dev/null || true)
 
@@ -96,7 +107,8 @@ for allowed_ip in "${ALLOWED_IPS[@]}"; do
     fi
 done
 
-[[ "$LICENSE_VALID" == true ]] || die "IP VPS tidak memiliki lisensi."
+[[ "$LICENSE_VALID" == true ]] \
+    || die "IP VPS tidak memiliki lisensi: $PUBLIC_IP"
 
 info "Lisensi valid: $PUBLIC_IP"
 
