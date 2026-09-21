@@ -69,7 +69,7 @@ else
     unzip -tq "$ARCHIVE" >/dev/null || die "Release Ayah Alma rusak."
     mkdir -p "$WORK_DIR/release"
     unzip -q "$ARCHIVE" -d "$WORK_DIR/release"
-    BASE_DIR="$WORK_DIR/release/ayah-alma-main"
+    BASE_DIR="$WORK_DIR/release/ayah-alma-release/ayah-alma-main"
     [[ -d "$BASE_DIR" ]] || die "Struktur release Ayah Alma tidak valid."
 fi
 
