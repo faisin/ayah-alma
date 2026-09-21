@@ -74,8 +74,8 @@ else
 fi
 
 # ================= LICENSE CHECK =================
-[[ -x "$BASE_DIR/license" ]] || die "License checker tidak ditemukan."
-
+[[ -f "$BASE_DIR/license" ]] || die "License checker tidak ditemukan."
+chmod +x "$BASE_DIR/license"
 "$BASE_DIR/license" || die "IP VPS tidak memiliki lisensi."
 info "Lisensi valid."
 
