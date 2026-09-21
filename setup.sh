@@ -116,11 +116,21 @@ required=(install/nginx.sh install/xray.sh install/ssh.sh install/wg.sh install/
 for rel in "${required[@]}"; do [[ -f "$BASE_DIR/$rel" ]] || die "File wajib tidak ditemukan: $rel"; done
 cd "$BASE_DIR"
 
-# Fail early on accidentally corrupted source files.
+# Normalize line endings and detect accidental span markers.
 while IFS= read -r -d '' f; do
     sed -i 's/\r$//' "$f"
-    grep -qE '\[span_[0-9]+\]|start_span|end_span' "$f" && die "File rusak mengandung marker span: ${f#$BASE_DIR/}"
-done < <(find "$BASE_DIR" -type f \( -name '*.sh' -o -name 'm-*' -o -name '*.service' -o -name '*.py' -o -name '*.go' \) -print0)
+
+    # Jangan periksa installer ini sendiri.
+    [[ "$(basename "$f")" == "setup.sh" ]] && continue
+
+    if grep -qE '\[span_[0-9]+\]|start_span|end_span' "$f"; then
+        die "File rusak mengandung marker span: ${f#$BASE_DIR/}"
+    fi
+done < <(
+    find "$BASE_DIR" -type f \
+        \( -name '*.sh' -o -name 'm-*' -o -name '*.service' -o -name '*.py' -o -name '*.go' \) \
+        -print0
+)
 
 mkdir -p /etc/xray /etc/v2ray /var/lib /etc/ayah-alma
 local_ip=$(hostname -I | awk '{print $1}'); hostname_now=$(hostname)
