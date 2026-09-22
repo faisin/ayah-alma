@@ -1,7 +1,7 @@
+cat << 'EOF' > /usr/bin/running
 #!/bin/bash
 # Submenu Status Service - by Ayah Alma
 
-# Warna
 NC='\e[0m'
 GREEN='\e[1;32m'
 YELLOW='\e[1;33m'
@@ -12,7 +12,6 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 echo -e "${CYAN}          📡 STATUS LAYANAN AKTIF           ${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-# Daftar layanan yang dicek sesuai systemd
 services=(
   "xray"
   "nginx"
@@ -34,5 +33,8 @@ for svc in "${services[@]}"; do
 done
 
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-read -n1 -r -p "⏎ Tekan enter untuk kembali ke menu tools..."
-tools-menu
+read -n1 -r -p "⏎ Tekan enter untuk kembali ke menu..."
+menu
+EOF
+
+chmod +x /usr/bin/running
