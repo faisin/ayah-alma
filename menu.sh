@@ -281,7 +281,7 @@ case $menu in
 6) m-wg ;;
 7) m-zivpn ;;
 8) tools-menu ;;
-9) running ;;
+9) exec "$0" ;;
 10) clearcache ;;
 11) reboot ;;
 12) bash /root/uninstall.sh ;;
