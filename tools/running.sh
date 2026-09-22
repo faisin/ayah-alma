@@ -1,7 +1,5 @@
 cat << 'EOF' > /usr/bin/running
 #!/bin/bash
-# Submenu Status Service - by Ayah Alma
-
 NC='\e[0m'
 GREEN='\e[1;32m'
 YELLOW='\e[1;33m'
