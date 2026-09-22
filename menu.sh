@@ -1,10 +1,5 @@
 #!/bin/bash
 
-
-# ==========================================
-
-# ... (lanjutan kode panel seperti variabel, banner, dan menu di bawahnya)
-
 # ==========================================
 # AYAH-ALMA XRAY PANEL
 # ==========================================
@@ -135,7 +130,7 @@ else
     UDPCUSTOM="${RED}🔴 OFF${NC}"
 fi
 
-DROPBEARWS=$(systemctl is-active ws-dropbear)
+DROPBEARWS=$(systemctl is-active dropbear-ws)
 
 if [[ $DROPBEARWS == "active" ]]; then
 DROPBEARWS="${GREEN}🟢 ONLINE${NC}"
