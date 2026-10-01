@@ -115,4 +115,3 @@ sleep 1
 /usr/bin/m-ssh 2>/dev/null || bash /etc/ayah-alma/ssh/m-ssh
 ;;
 esac
-
