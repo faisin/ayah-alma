@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==========================================
-# AYAH-ALMA XRAY PANEL
+# FAYSAL BASRY VPS PANEL
 # ==========================================
 
 PANEL_VERSION="v2.1.1"
@@ -179,7 +179,7 @@ cut -d':' -f2 | sort -u | wc -l)
 clear
 
 echo -ne "${YELLOW}"
-printf "🚀🚀🚀 LOADING AYAH-ALMA PANEL VESION 🚀🚀🚀" | type_text
+printf "🚀🚀🚀 SELAMAT DATANG DI PANEL FAYSAL BASRY 🚀🚀🚀" | type_text
 echo -e "${NC}"
 
 loading "Loading System Modules"
@@ -195,7 +195,7 @@ clear
 # ================= HEADER =================
 
 echo -e "${CYAN}┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓${NC}"
-echo -e "${CYAN}┃${GREEN}          ⚡ AYAH-ALMA XRAY PANEL ⚡         ${CYAN}┃${NC}"
+echo -e "${CYAN}┃${GREEN}          ⚡ VPS FAYSAL BASRY ⚡         ${CYAN}┃${NC}"
 echo -e "${CYAN}┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛${NC}"
 
 # ================= SYSTEM INFO =================
@@ -266,7 +266,7 @@ echo -e "${RED}└────────────────────�
 # ================= LICENSE =================
 
 echo -e "${RED}┌──────────────── LICENSE ────────────────────┐${NC}"
-echo -e " ${GREEN}License${NC} : ${GREEN}AYAH-ALMA-ULTIMATE${NC}"
+echo -e " ${GREEN}License${NC} : ${GREEN}Basry Faysal${NC}"
 echo -e " ${GREEN}Type${NC}    : ${GREEN}Lifetime Premium${NC}"
 echo -e "${RED}└─────────────────────────────────────────────┘${NC}"
 
