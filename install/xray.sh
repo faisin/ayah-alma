@@ -64,14 +64,16 @@ else
 fi
 
 echo "$domain" > /etc/xray/domain
-raw_domain="tls.${domain}"
-vmess_domain="vmess.${domain}"
-vless_domain="vless.${domain}"
-trojan_domain="trojan.${domain}"
-echo "$raw_domain" > /etc/xray/raw-domain
-echo "$vmess_domain" > /etc/xray/vmess-domain
-echo "$vless_domain" > /etc/xray/vless-domain
-echo "$trojan_domain" > /etc/xray/trojan-domain
+
+raw_domain="$domain"
+vmess_domain="$domain"
+vless_domain="$domain"
+trojan_domain="$domain"
+
+echo "$domain" > /etc/xray/raw-domain
+echo "$domain" > /etc/xray/vmess-domain
+echo "$domain" > /etc/xray/vless-domain
+echo "$domain" > /etc/xray/trojan-domain
 
 # ================= ENABLE CRON =================
 
@@ -101,16 +103,12 @@ fuser -k 80/tcp >/dev/null 2>&1 || true
 
 # ================= ISSUE CERT =================
 
-echo -e "${GREEN}🚀 Issuing SSL Certificate...${NC}"
+mkdir -p /var/www/html/.well-known/acme-challenge
 
 ~/.acme.sh/acme.sh \
     --issue \
     -d "$domain" \
-    -d "$raw_domain" \
-    -d "$vmess_domain" \
-    -d "$vless_domain" \
-    -d "$trojan_domain" \
-    --standalone \
+    --webroot /var/www/html \
     --keylength ec-256 \
     --force || {
         echo -e "${RED}[ERROR] Failed to issue SSL certificate!${NC}"
