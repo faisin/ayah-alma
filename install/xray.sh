@@ -92,14 +92,12 @@ chmod +x ~/.acme.sh/acme.sh
 ~/.acme.sh/acme.sh --set-default-ca --server letsencrypt
 ~/.acme.sh/acme.sh --register-account -m admin@$domain || true
 
-# ================= STOP PORT 80 =================
+# ================= ACME WEBROOT =================
 
-echo -e "${GREEN}🛑 Freeing Port 80...${NC}"
+echo -e "${GREEN}📁 Preparing ACME webroot...${NC}"
 
-systemctl stop nginx 2>/dev/null || true
-systemctl stop apache2 2>/dev/null || true
+mkdir -p /var/www/html/.well-known/acme-challenge
 
-fuser -k 80/tcp >/dev/null 2>&1 || true
 
 # ================= ISSUE CERT =================
 
