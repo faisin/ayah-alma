@@ -184,7 +184,16 @@ printf 'OS=%s\nIP=%s\n' "$PRETTY_NAME" "$domain" > /var/lib/ipvps.conf
 info "Domain: $domain"
 
 run_module(){ local rel="$1"; [[ -f "$BASE_DIR/$rel" ]] || die "Module tidak ditemukan: $rel"; info "Menjalankan $rel ..."; (cd "$BASE_DIR" && bash "$BASE_DIR/$rel"); }
+
+# Pasang konfigurasi Nginx sebelum pengecekan backend HAProxy.
+# Sumber tetap dari MAIN/ZIP final yang sudah dipilih di atas.
+install -d /etc/nginx/conf.d
+cp -f "$BASE_DIR/config/xray.conf" /etc/nginx/conf.d/xray.conf
+
 run_module install/nginx.sh
+nginx -t || die "Nginx config error setelah pemasangan xray.conf"
+systemctl reload nginx || true
+
 run_module install/xray.sh
 run_module install/ssh.sh
 run_module install/wg.sh
