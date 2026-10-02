@@ -179,7 +179,7 @@ cut -d':' -f2 | sort -u | wc -l)
 clear
 
 echo -ne "${YELLOW}"
-printf "🚀🚀🚀 SELAMAT DATANG DI PANEL FAYSAL BASRY 🚀🚀🚀" | type_text
+printf "🚀 SELAMAT DATANG DI PANEL FAYSAL BASRY 🚀" | type_text
 echo -e "${NC}"
 
 loading "Loading System Modules"
@@ -195,7 +195,7 @@ clear
 # ================= HEADER =================
 
 echo -e "${CYAN}┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓${NC}"
-echo -e "${CYAN}┃${GREEN}          ⚡ VPS FAYSAL BASRY ⚡         ${CYAN}┃${NC}"
+echo -e "${CYAN}┃${GREEN}          ⚡ AYAH ALMA VPS PANEL ⚡         ${CYAN}┃${NC}"
 echo -e "${CYAN}┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛${NC}"
 
 # ================= SYSTEM INFO =================
@@ -251,7 +251,7 @@ echo -e "${BLUE}└────────────────────�
 
 # ================= MENU =================
 
-echo -e "${RED}┌──────────────── MENU AYAH ALMA ─────────────────┐${NC}"
+echo -e "${RED}┌──────────────── AYAH ALMA MENU ─────────────────┐${NC}"
 
 echo -e " ${CYAN}[1]${NC}  ${GREEN}SSH${NC}         ${CYAN}[8]${NC}  ${GREEN}TOOLS${NC}"
 echo -e " ${CYAN}[2]${NC}  ${GREEN}VMESS${NC}       ${CYAN}[9]${NC}  ${GREEN}STATUS${NC}"
@@ -281,7 +281,7 @@ case $menu in
 6) m-wg ;;
 7) m-zivpn ;;
 8) tools-menu ;;
-9) running ;;
+9) running.sh ;;
 10) clearcache ;;
 11) reboot ;;
 12) bash /root/uninstall.sh ;;
