@@ -30,6 +30,9 @@ curl wget cron jq unzip haproxy \
 gnupg coreutils lsof qrencode \
 ca-certificates
 
+# Validate HAProxy installation from Debian/Ubuntu package
+command -v haproxy >/dev/null 2>&1 || { echo -e "${RED}[ERROR] HAProxy package not available after install.${NC}"; exit 1; }
+
 mkdir -p /etc/xray
 mkdir -p /var/log/xray
 mkdir -p /usr/local/bin
@@ -135,6 +138,12 @@ if [ ! -s /etc/haproxy/haproxy.cfg ]; then
     echo "[ERROR] Failed to create HAProxy config"; exit 1
 fi
 haproxy -c -f /etc/haproxy/haproxy.cfg || { echo "[ERROR] Invalid HAProxy config"; exit 1; }
+
+# Ensure HAProxy backend target (Nginx) exists before starting gateway
+if ! ss -lnt | grep -q ":8443"; then
+    echo "[ERROR] Nginx backend :8443 is not listening"
+    exit 1
+fi
 
 # ================= PERMISSION =================
 
