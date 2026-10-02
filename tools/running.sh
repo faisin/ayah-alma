@@ -17,7 +17,7 @@ services=(
   "wg-quick@wg0"
   "udp-custom"
   "zivpn"
-  "dropbear-ws"
+  "ws-dropbear"
   "stunnel-ws"
 )
 
