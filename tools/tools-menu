@@ -25,7 +25,7 @@ case $opt in
 1) bash /etc/ayah-alma/tools/backup.sh ;;
 2) bash /etc/ayah-alma/tools/speedtest.sh ;;
 3) bash /etc/ayah-alma/tools/domain.sh ;;
-4) bash /etc/ayah-alma/tools/running.sh ;;
+4) bash /etc/ayah-alma/tools/running ;;
 5) 
     clear
     echo -e "${CYAN}🤖 Menjalankan Bot Telegram...${NC}"
