@@ -240,7 +240,7 @@ echo -e "${CYAN}└────────────────────�
 
 # ================= SERVICE =================
 
-echo -e "${BLUE}┌─────────────── SERVICE BY AYAH ALMA ─────────────┐${NC}"
+echo -e "${BLUE}┌──────────── SERVICE BY AYAH ALMA ────────────┐${NC}"
 
 printf " ${GREEN}%-10s${NC} : %-15b  ${GREEN}%-10s${NC} : %-15b\n" "XRAY" "$XRAY" "NGINX" "$NGINX"
 printf " ${GREEN}%-10s${NC} : %-15b  ${GREEN}%-10s${NC} : %-15b\n" "DROPBEAR" "$DROPBEAR" "WIREGUARD" "$WG"
@@ -251,7 +251,7 @@ echo -e "${BLUE}└────────────────────�
 
 # ================= MENU =================
 
-echo -e "${RED}┌──────────────── AYAH ALMA MENU ─────────────────┐${NC}"
+echo -e "${RED}┌─────────────── AYAH ALMA MENU ────────────────┐${NC}"
 
 echo -e " ${CYAN}[1]${NC}  ${GREEN}SSH${NC}         ${CYAN}[8]${NC}  ${GREEN}TOOLS${NC}"
 echo -e " ${CYAN}[2]${NC}  ${GREEN}VMESS${NC}       ${CYAN}[9]${NC}  ${GREEN}STATUS${NC}"
