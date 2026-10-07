@@ -11,12 +11,12 @@ clear
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${CYAN}              ⚙️ MENU VMESS XRAY              ${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${GREEN}[1]${NC} ${RED}Tambah Akun VMess${NC}"
-echo -e "${GREEN}[2]${NC} ${RED}Trial Akun VMess${NC}"
-echo -e "${GREEN}[3]${NC} ${RED}Hapus Akun VMess${NC}"
-echo -e "${GREEN}[4]${NC} ${RED}Cek Login VMess${NC}"
-echo -e "${GREEN}[5]${NC} ${RED}Perpanjang Masa Aktif Akun${NC}"
-echo -e "${GREEN}[x]${NC} Kembali ke menu utama"
+echo -e "${GREEN}[1]${NC} ${RED}Tambah Akun VMess Ayah Alma${NC}"
+echo -e "${GREEN}[2]${NC} ${RED}Trial Akun VMess Ayah Alma${NC}"
+echo -e "${GREEN}[3]${NC} ${RED}Hapus Akun VMess Ayah Alma${NC}"
+echo -e "${GREEN}[4]${NC} ${RED}Cek Login VMess Ayah Alma${NC}"
+echo -e "${GREEN}[5]${NC} ${RED}Perpanjang Masa Aktif Akun Vmess${NC}"
+echo -e "${GREEN}[x]${NC} ${RED}Kembali ke menu utama Ayah Alma${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 read -p "👉 Pilih opsi: " opt
