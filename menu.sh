@@ -240,7 +240,7 @@ echo -e "${CYAN}└────────────────────�
 
 # ================= SERVICE =================
 
-echo -e "${BLUE}┌──────────────── SERVICE BY AYAH ALMA ────────────────────┐${NC}"
+echo -e "${BLUE}┌─────────────── SERVICE BY AYAH ALMA ─────────────┐${NC}"
 
 printf " ${GREEN}%-10s${NC} : %-15b  ${GREEN}%-10s${NC} : %-15b\n" "XRAY" "$XRAY" "NGINX" "$NGINX"
 printf " ${GREEN}%-10s${NC} : %-15b  ${GREEN}%-10s${NC} : %-15b\n" "DROPBEAR" "$DROPBEAR" "WIREGUARD" "$WG"
