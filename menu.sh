@@ -179,7 +179,7 @@ cut -d':' -f2 | sort -u | wc -l)
 clear
 
 echo -ne "${YELLOW}"
-printf "🚀 SELAMAT DATANG DI PANEL FAYSAL BASRY 🚀" | type_text
+printf "🚀 WELCOM TO SCRIPT MENU AYAH ALMA 🚀" | type_text
 echo -e "${NC}"
 
 loading "Loading System Modules"
@@ -240,7 +240,7 @@ echo -e "${CYAN}└────────────────────�
 
 # ================= SERVICE =================
 
-echo -e "${BLUE}┌──────────────── SERVICE ────────────────────┐${NC}"
+echo -e "${BLUE}┌──────────────── SERVICE BY AYAH ALMA ────────────────────┐${NC}"
 
 printf " ${GREEN}%-10s${NC} : %-15b  ${GREEN}%-10s${NC} : %-15b\n" "XRAY" "$XRAY" "NGINX" "$NGINX"
 printf " ${GREEN}%-10s${NC} : %-15b  ${GREEN}%-10s${NC} : %-15b\n" "DROPBEAR" "$DROPBEAR" "WIREGUARD" "$WG"
@@ -266,8 +266,8 @@ echo -e "${RED}└────────────────────�
 # ================= LICENSE =================
 
 echo -e "${RED}┌──────────────── LICENSE ────────────────────┐${NC}"
-echo -e " ${GREEN}License${NC} : ${GREEN}Basry Faysal${NC}"
-echo -e " ${GREEN}Type${NC}    : ${GREEN}Lifetime Premium${NC}"
+echo -e " ${GREEN}License${NC} : ${GREEN}AYAH ALMA${NC}"
+echo -e " ${GREEN}Pemilik${NC}    : ${GREEN}SCRIPT BY AYAH ALMA${NC}"
 echo -e "${RED}└─────────────────────────────────────────────┘${NC}"
 
 read -rp "Select Menu : " menu
@@ -281,7 +281,7 @@ case $menu in
 6) m-wg ;;
 7) m-zivpn ;;
 8) tools-menu ;;
-9) running.sh ;;
+9) running ;;
 10) clearcache ;;
 11) reboot ;;
 12) bash /root/uninstall.sh ;;
