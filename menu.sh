@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==========================================
-# FAYSAL BASRY VPS PANEL
+# AYA ALMA PANEL
 # ==========================================
 
 PANEL_VERSION="v2.1.1"
