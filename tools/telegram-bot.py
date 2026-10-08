@@ -1,15 +1,4 @@
-Siap. Kita kerjakan file yang sama:
-FILE YANG DIUBAH: tools/telegram-bot.py
-Saya buat Admin Panel lebih lengkap sebagai fondasi: status server, service, akun VMess/VLESS/Trojan/SSH, pesanan, pembayaran, pengaturan, restart service, dan navigasi admin. Untuk generator akun, nanti kita sambungkan ke script Ayah Alma yang sebenarnya supaya tidak menebak nama script.
-tools/telegram-bot.py
 #!/usr/bin/env python3
-
-import os
-import time
-import subprocess
-import requests
-
-
 # ============================================================
 # AYAH ALMA TELEGRAM BOT
 # ============================================================
