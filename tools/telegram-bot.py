@@ -463,10 +463,19 @@ def get_server_status():
 
     except Exception:
         pass
-
+        
     load = command_output(
         ["cat", "/proc/loadavg"],
         "Unknown"
     )
 
     load_text = load.split()[0] if load != "Unknown" else "Unknown"
+
+    return (
+        "📊 *STATUS SERVER*\n\n"
+        f"🖥 Hostname: `{hostname}`\n"
+        f"⏱ Uptime: `{uptime}`\n"
+        f"💾 Disk: `{disk_used}`\n"
+        f"🧠 RAM: `{memory_text}`\n"
+        f"⚡ Load: `{load_text}`"
+    )
