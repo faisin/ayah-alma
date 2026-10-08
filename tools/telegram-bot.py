@@ -8,8 +8,9 @@ import requests
 # ============================================================
 # AYAH ALMA TELEGRAM BOT
 # Universal Telegram Bot
-# Token dibaca dari:
-# /etc/ayah-alma/telegram.conf
+#
+# Token:
+# /etc/ayah-alma/config/telegram.conf
 #
 # Format:
 # BOT_TOKEN="TOKEN_BOT"
@@ -152,39 +153,49 @@ def is_admin(chat_id):
 # MAIN MENU
 # ============================================================
 
-def main_menu():
+def main_menu(chat_id=None):
+
+    keyboard = [
+        [
+            {
+                "text": "🌐 Produk / Layanan",
+                "callback_data": "produk"
+            }
+        ],
+
+        [
+            {
+                "text": "💳 Cara Order",
+                "callback_data": "cara_order"
+            }
+        ],
+
+        [
+            {
+                "text": "📞 Hubungi Admin",
+                "url": "https://t.me/anindyaalmahyra"
+            }
+        ],
+
+        [
+            {
+                "text": "ℹ️ Tentang Bot",
+                "callback_data": "tentang"
+            }
+        ]
+    ]
+
+    # ADMIN MENDAPAT AKSES TAMBAHAN
+    if chat_id is not None and is_admin(chat_id):
+        keyboard.append([
+            {
+                "text": "🔐 Admin Panel",
+                "callback_data": "admin"
+            }
+        ])
 
     return {
-        "inline_keyboard": [
-
-            [
-                {
-                    "text": "🌐 Produk / Layanan",
-                    "callback_data": "produk"
-                }
-            ],
-
-            [
-                {
-                    "text": "💳 Cara Order",
-                    "callback_data": "cara_order"
-                }
-            ],
-
-            [
-                {
-                    "text": "📞 Hubungi Admin",
-                    "url": "https://t.me/anindyaalmahyra"
-                }
-            ],
-
-            [
-                {
-                    "text": "ℹ️ Tentang Bot",
-                    "callback_data": "tentang"
-                }
-            ]
-        ]
+        "inline_keyboard": keyboard
     }
 
 
@@ -264,6 +275,7 @@ def get_server_status():
         ).splitlines()[1].split()
 
         disk_used = disk[4]
+
     except Exception:
         disk_used = "Unknown"
 
@@ -370,16 +382,28 @@ def get_vps_menu():
 
 def handle_start(chat_id):
 
-    text = (
-        "🤖 *AYAH ALMA BOT*\n\n"
-        "Selamat datang.\n"
-        "Silakan pilih menu di bawah."
-    )
+    if is_admin(chat_id):
+
+        text = (
+            "🤖 *AYAH ALMA BOT*\n\n"
+            "🔐 *ADMIN TERDETEKSI*\n\n"
+            "Anda memiliki akses penuh ke fungsi admin "
+            "yang tersedia di bot.\n\n"
+            "Silakan pilih menu di bawah."
+        )
+
+    else:
+
+        text = (
+            "🤖 *AYAH ALMA BOT*\n\n"
+            "Selamat datang.\n"
+            "Silakan pilih menu di bawah."
+        )
 
     send_message(
         chat_id,
         text,
-        main_menu()
+        main_menu(chat_id)
     )
 
 
@@ -390,17 +414,20 @@ def handle_start(chat_id):
 def handle_admin(chat_id):
 
     if not is_admin(chat_id):
+
         send_message(
             chat_id,
             "⛔ *Akses ditolak.*\n\n"
             "Menu ini hanya untuk administrator."
         )
+
         return
 
     send_message(
         chat_id,
         "🔐 *ADMIN PANEL*\n\n"
-        "Pilih fungsi server:",
+        "Administrator memiliki akses penuh "
+        "ke fungsi admin yang tersedia.",
         admin_menu()
     )
 
@@ -427,9 +454,9 @@ def handle_callback(update):
 
     answer_callback(callback_id)
 
-    # --------------------------------------------------------
+    # ========================================================
     # PUBLIC MENU
-    # --------------------------------------------------------
+    # ========================================================
 
     if data == "produk":
 
@@ -450,7 +477,7 @@ def handle_callback(update):
             chat_id,
             message_id,
             text,
-            main_menu()
+            main_menu(chat_id)
         )
 
     elif data == "cara_order":
@@ -468,7 +495,7 @@ def handle_callback(update):
             chat_id,
             message_id,
             text,
-            main_menu()
+            main_menu(chat_id)
         )
 
     elif data == "tentang":
@@ -484,33 +511,43 @@ def handle_callback(update):
             chat_id,
             message_id,
             text,
-            main_menu()
+            main_menu(chat_id)
         )
 
-    # --------------------------------------------------------
+    # ========================================================
     # ADMIN MENU
-    # --------------------------------------------------------
+    # ========================================================
 
     elif data == "admin":
 
         if not is_admin(chat_id):
+
             send_message(
                 chat_id,
                 "⛔ Akses admin ditolak."
             )
+
             return
 
         edit_message(
             chat_id,
             message_id,
-            "🔐 *ADMIN PANEL*\n\nPilih fungsi:",
+            "🔐 *ADMIN PANEL*\n\n"
+            "Administrator memiliki akses penuh "
+            "ke fungsi admin yang tersedia.\n\n"
+            "Pilih fungsi:",
             admin_menu()
         )
 
     elif data == "status_server":
 
         if not is_admin(chat_id):
-            send_message(chat_id, "⛔ Akses ditolak.")
+
+            send_message(
+                chat_id,
+                "⛔ Akses ditolak."
+            )
+
             return
 
         xray = service_status("xray")
@@ -538,7 +575,12 @@ def handle_callback(update):
     elif data == "menu_vps":
 
         if not is_admin(chat_id):
-            send_message(chat_id, "⛔ Akses ditolak.")
+
+            send_message(
+                chat_id,
+                "⛔ Akses ditolak."
+            )
+
             return
 
         edit_message(
@@ -551,16 +593,26 @@ def handle_callback(update):
     elif data == "restart_xray":
 
         if not is_admin(chat_id):
-            send_message(chat_id, "⛔ Akses ditolak.")
+
+            send_message(
+                chat_id,
+                "⛔ Akses ditolak."
+            )
+
             return
 
         if restart_service("xray"):
+
             text = (
                 "✅ *XRAY BERHASIL DIRESTART*\n\n"
                 f"Status: {service_status('xray')}"
             )
+
         else:
-            text = "❌ *Gagal melakukan restart Xray.*"
+
+            text = (
+                "❌ *Gagal melakukan restart Xray.*"
+            )
 
         edit_message(
             chat_id,
@@ -572,16 +624,26 @@ def handle_callback(update):
     elif data == "restart_ssh":
 
         if not is_admin(chat_id):
-            send_message(chat_id, "⛔ Akses ditolak.")
+
+            send_message(
+                chat_id,
+                "⛔ Akses ditolak."
+            )
+
             return
 
         if restart_service("ssh"):
+
             text = (
                 "✅ *SSH BERHASIL DIRESTART*\n\n"
                 f"Status: {service_status('ssh')}"
             )
+
         else:
-            text = "❌ *Gagal melakukan restart SSH.*"
+
+            text = (
+                "❌ *Gagal melakukan restart SSH.*"
+            )
 
         edit_message(
             chat_id,
@@ -592,13 +654,7 @@ def handle_callback(update):
 
     elif data == "back":
 
-        edit_message(
-            chat_id,
-            message_id,
-            "🤖 *AYAH ALMA BOT*\n\n"
-            "Silakan pilih menu:",
-            main_menu()
-        )
+        handle_start(chat_id)
 
 
 # ============================================================
@@ -607,9 +663,9 @@ def handle_callback(update):
 
 def process_update(update):
 
-    # --------------------------------------------------------
+    # ========================================================
     # MESSAGE
-    # --------------------------------------------------------
+    # ========================================================
 
     if "message" in update:
 
@@ -668,16 +724,18 @@ def process_update(update):
                 "/start - Menu utama\n"
                 "/id - Melihat Chat ID\n"
                 "/help - Bantuan\n"
-                "/admin - Admin Panel"
+                "/admin - Admin Panel\n"
+                "/status - Status server"
             )
 
-    # --------------------------------------------------------
+    # ========================================================
     # CALLBACK
-    # --------------------------------------------------------
+    # ========================================================
 
     elif "callback_query" in update:
 
         try:
+
             handle_callback(update)
 
         except Exception as e:
