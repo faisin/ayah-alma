@@ -8,7 +8,9 @@ import time
 import subprocess
 import requests
 
+
 CONFIG_FILE = "/etc/ayah-alma/config/telegram.conf"
+
 
 # ============================================================
 # LOAD CONFIG
@@ -162,12 +164,14 @@ def main_menu(chat_id=None):
     ]
 
     if chat_id is not None and is_admin(chat_id):
-        keyboard.append([
-            {
-                "text": "🔐 ADMIN PANEL",
-                "callback_data": "admin"
-            }
-        ])
+        keyboard.append(
+            [
+                {
+                    "text": "🔐 ADMIN PANEL",
+                    "callback_data": "admin"
+                }
+            ]
+        )
 
     return {
         "inline_keyboard": keyboard
@@ -427,55 +431,4 @@ def get_server_status():
     )
 
     disk = command_output(
-        ["df", "-h", "/"],
-        "Unknown"
-    )
-
-    disk_used = "Unknown"
-
-    try:
-        lines = disk.splitlines()
-
-        if len(lines) > 1:
-            parts = lines[1].split()
-
-            if len(parts) >= 5:
-                disk_used = parts[4]
-
-    except Exception:
-        pass
-
-    memory = command_output(
-        ["free", "-h"],
-        "Unknown"
-    )
-
-    memory_text = "Unknown"
-
-    try:
-        lines = memory.splitlines()
-
-        if len(lines) > 1:
-            parts = lines[1].split()
-
-            if len(parts) >= 3:
-                memory_text = f"{parts[2]} / {parts[1]}"
-
-    except Exception:
-        pass
-        
-    load = command_output(
-        ["cat", "/proc/loadavg"],
-        "Unknown"
-    )
-
-    load_text = load.split()[0] if load != "Unknown" else "Unknown"
-
-    return (
-        "📊 *STATUS SERVER*\n\n"
-        f"🖥 Hostname: `{hostname}`\n"
-        f"⏱ Uptime: `{uptime}`\n"
-        f"💾 Disk: `{disk_used}`\n"
-        f"🧠 RAM: `{memory_text}`\n"
-        f"⚡ Load: `{load_text}`"
-    )
+        ["df", "-
