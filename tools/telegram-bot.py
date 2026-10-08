@@ -16,7 +16,7 @@ import requests
 # ADMIN_CHAT_ID="123456789"
 # ============================================================
 
-CONFIG_FILE = "/etc/ayah-alma/telegram.conf"
+CONFIG_FILE = "/etc/ayah-alma/config/telegram.conf"
 
 
 # ============================================================
