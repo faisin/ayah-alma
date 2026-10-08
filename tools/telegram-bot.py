@@ -3,8 +3,12 @@
 # AYAH ALMA TELEGRAM BOT
 # ============================================================
 
-CONFIG_FILE = "/etc/ayah-alma/config/telegram.conf"
+import os
+import time
+import subprocess
+import requests
 
+CONFIG_FILE = "/etc/ayah-alma/config/telegram.conf"
 
 # ============================================================
 # LOAD CONFIG
