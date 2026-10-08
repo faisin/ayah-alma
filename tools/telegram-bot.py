@@ -469,4 +469,5 @@ def get_server_status():
         "Unknown"
     )
 
-    load_text = load.split()[0] if load != "Unknown" else "Unknown"
+   load_text = load.split()[0] if load != "Unknown" else
+             "Unknown"
