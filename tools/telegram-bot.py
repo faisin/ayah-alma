@@ -1,3 +1,7 @@
+Siap. Kita kerjakan file yang sama:
+FILE YANG DIUBAH: tools/telegram-bot.py
+Saya buat Admin Panel lebih lengkap sebagai fondasi: status server, service, akun VMess/VLESS/Trojan/SSH, pesanan, pembayaran, pengaturan, restart service, dan navigasi admin. Untuk generator akun, nanti kita sambungkan ke script Ayah Alma yang sebenarnya supaya tidak menebak nama script.
+tools/telegram-bot.py
 #!/usr/bin/env python3
 
 import os
@@ -5,16 +9,9 @@ import time
 import subprocess
 import requests
 
+
 # ============================================================
 # AYAH ALMA TELEGRAM BOT
-# Universal Telegram Bot
-#
-# Token:
-# /etc/ayah-alma/config/telegram.conf
-#
-# Format:
-# BOT_TOKEN="TOKEN_BOT"
-# ADMIN_CHAT_ID="123456789"
 # ============================================================
 
 CONFIG_FILE = "/etc/ayah-alma/config/telegram.conf"
@@ -61,13 +58,6 @@ ADMIN_CHAT_ID = CONFIG.get("ADMIN_CHAT_ID", "")
 
 if not TOKEN:
     print("ERROR: BOT_TOKEN belum dikonfigurasi.")
-    print()
-    print(f"Buat file:")
-    print(f"  {CONFIG_FILE}")
-    print()
-    print('Contoh:')
-    print('BOT_TOKEN="TOKEN_BOT_MILIKMU"')
-    print('ADMIN_CHAT_ID="123456789"')
     raise SystemExit(1)
 
 
@@ -79,11 +69,9 @@ API_URL = f"https://api.telegram.org/bot{TOKEN}/"
 # ============================================================
 
 def telegram_request(method, data=None, timeout=35):
-    url = API_URL + method
-
     try:
         response = requests.post(
-            url,
+            API_URL + method,
             json=data or {},
             timeout=timeout
         )
@@ -162,21 +150,18 @@ def main_menu(chat_id=None):
                 "callback_data": "produk"
             }
         ],
-
         [
             {
                 "text": "💳 Cara Order",
                 "callback_data": "cara_order"
             }
         ],
-
         [
             {
                 "text": "📞 Hubungi Admin",
                 "url": "https://t.me/anindyaalmahyra"
             }
         ],
-
         [
             {
                 "text": "ℹ️ Tentang Bot",
@@ -185,11 +170,10 @@ def main_menu(chat_id=None):
         ]
     ]
 
-    # ADMIN MENDAPAT AKSES TAMBAHAN
     if chat_id is not None and is_admin(chat_id):
         keyboard.append([
             {
-                "text": "🔐 Admin Panel",
+                "text": "🔐 ADMIN PANEL",
                 "callback_data": "admin"
             }
         ])
@@ -217,6 +201,41 @@ def admin_menu():
 
             [
                 {
+                    "text": "👥 Kelola Akun",
+                    "callback_data": "kelola_akun"
+                }
+            ],
+
+            [
+                {
+                    "text": "📦 Produk / Layanan",
+                    "callback_data": "admin_produk"
+                }
+            ],
+
+            [
+                {
+                    "text": "🧾 Pesanan",
+                    "callback_data": "pesanan"
+                }
+            ],
+
+            [
+                {
+                    "text": "💰 Pembayaran",
+                    "callback_data": "pembayaran"
+                }
+            ],
+
+            [
+                {
+                    "text": "⚙️ Pengaturan Bot",
+                    "callback_data": "pengaturan_bot"
+                }
+            ],
+
+            [
+                {
                     "text": "🖥 Menu VPS",
                     "callback_data": "menu_vps"
                 }
@@ -238,8 +257,124 @@ def admin_menu():
 
             [
                 {
-                    "text": "⬅️ Kembali",
+                    "text": "⬅️ Menu Utama",
                     "callback_data": "back"
+                }
+            ]
+        ]
+    }
+
+
+# ============================================================
+# ACCOUNT MENU
+# ============================================================
+
+def account_menu():
+
+    return {
+        "inline_keyboard": [
+
+            [
+                {
+                    "text": "🔵 VMess",
+                    "callback_data": "akun_vmess"
+                },
+                {
+                    "text": "🟢 VLESS",
+                    "callback_data": "akun_vless"
+                }
+            ],
+
+            [
+                {
+                    "text": "🟠 Trojan",
+                    "callback_data": "akun_trojan"
+                },
+                {
+                    "text": "🔐 SSH",
+                    "callback_data": "akun_ssh"
+                }
+            ],
+
+            [
+                {
+                    "text": "📋 Daftar Akun",
+                    "callback_data": "daftar_akun"
+                }
+            ],
+
+            [
+                {
+                    "text": "➕ Buat Akun",
+                    "callback_data": "buat_akun"
+                }
+            ],
+
+            [
+                {
+                    "text": "🗑 Hapus Akun",
+                    "callback_data": "hapus_akun"
+                }
+            ],
+
+            [
+                {
+                    "text": "🔄 Renew Akun",
+                    "callback_data": "renew_akun"
+                }
+            ],
+
+            [
+                {
+                    "text": "⬅️ Admin Panel",
+                    "callback_data": "admin"
+                }
+            ]
+        ]
+    }
+
+
+# ============================================================
+# PRODUCT MENU
+# ============================================================
+
+def product_menu():
+
+    return {
+        "inline_keyboard": [
+
+            [
+                {
+                    "text": "🔵 VMess",
+                    "callback_data": "produk_vmess"
+                }
+            ],
+
+            [
+                {
+                    "text": "🟢 VLESS",
+                    "callback_data": "produk_vless"
+                }
+            ],
+
+            [
+                {
+                    "text": "🟠 Trojan",
+                    "callback_data": "produk_trojan"
+                }
+            ],
+
+            [
+                {
+                    "text": "🔐 SSH",
+                    "callback_data": "produk_ssh"
+                }
+            ],
+
+            [
+                {
+                    "text": "⬅️ Admin Panel",
+                    "callback_data": "admin"
                 }
             ]
         ]
@@ -275,7 +410,6 @@ def get_server_status():
         ).splitlines()[1].split()
 
         disk_used = disk[4]
-
     except Exception:
         disk_used = "Unknown"
 
@@ -363,16 +497,42 @@ def get_vps_menu():
     if not os.path.isfile(menu_path):
         return (
             "⚠️ *Menu VPS tidak ditemukan.*\n\n"
-            "File `/usr/bin/menu` belum tersedia pada VPS ini."
+            "File `/usr/bin/menu` belum tersedia."
         )
 
     return (
         "🖥 *MENU VPS*\n\n"
-        "Menu VPS `/usr/bin/menu` tersedia.\n\n"
-        "Untuk keamanan, bot tidak menjalankan menu "
-        "terminal interaktif secara otomatis dari Telegram.\n\n"
-        "Fungsi Telegram dapat kita hubungkan langsung "
-        "ke script akun yang tersedia pada installer."
+        "Menu `/usr/bin/menu` tersedia pada VPS.\n\n"
+        "Kontrol VPS dari Telegram akan kita hubungkan "
+        "langsung ke fungsi Ayah Alma."
+    )
+
+
+# ============================================================
+# PLACEHOLDER INFORMATION
+# ============================================================
+
+def account_type_text(account_type):
+
+    names = {
+        "vmess": "🔵 VMess",
+        "vless": "🟢 VLESS",
+        "trojan": "🟠 Trojan",
+        "ssh": "🔐 SSH"
+    }
+
+    return names.get(account_type, account_type)
+
+
+def account_type_page(account_type):
+
+    name = account_type_text(account_type)
+
+    return (
+        f"{name}\n\n"
+        "Fungsi pengelolaan akun tersedia di Admin Panel.\n\n"
+        "Generator akun akan dihubungkan ke script "
+        "Ayah Alma yang tersedia pada VPS."
     )
 
 
@@ -383,17 +543,12 @@ def get_vps_menu():
 def handle_start(chat_id):
 
     if is_admin(chat_id):
-
         text = (
             "🤖 *AYAH ALMA BOT*\n\n"
-            "🔐 *ADMIN TERDETEKSI*\n\n"
-            "Anda memiliki akses penuh ke fungsi admin "
-            "yang tersedia di bot.\n\n"
-            "Silakan pilih menu di bawah."
+            "Selamat datang, Administrator.\n"
+            "Akses Admin Panel tersedia."
         )
-
     else:
-
         text = (
             "🤖 *AYAH ALMA BOT*\n\n"
             "Selamat datang.\n"
@@ -414,20 +569,18 @@ def handle_start(chat_id):
 def handle_admin(chat_id):
 
     if not is_admin(chat_id):
-
         send_message(
             chat_id,
             "⛔ *Akses ditolak.*\n\n"
             "Menu ini hanya untuk administrator."
         )
-
         return
 
     send_message(
         chat_id,
         "🔐 *ADMIN PANEL*\n\n"
         "Administrator memiliki akses penuh "
-        "ke fungsi admin yang tersedia.",
+        "ke fungsi bot.",
         admin_menu()
     )
 
@@ -454,9 +607,9 @@ def handle_callback(update):
 
     answer_callback(callback_id)
 
-    # ========================================================
-    # PUBLIC MENU
-    # ========================================================
+    # --------------------------------------------------------
+    # PUBLIC
+    # --------------------------------------------------------
 
     if data == "produk":
 
@@ -514,19 +667,14 @@ def handle_callback(update):
             main_menu(chat_id)
         )
 
-    # ========================================================
-    # ADMIN MENU
-    # ========================================================
+    # --------------------------------------------------------
+    # ADMIN
+    # --------------------------------------------------------
 
     elif data == "admin":
 
         if not is_admin(chat_id):
-
-            send_message(
-                chat_id,
-                "⛔ Akses admin ditolak."
-            )
-
+            send_message(chat_id, "⛔ Akses admin ditolak.")
             return
 
         edit_message(
@@ -534,20 +682,14 @@ def handle_callback(update):
             message_id,
             "🔐 *ADMIN PANEL*\n\n"
             "Administrator memiliki akses penuh "
-            "ke fungsi admin yang tersedia.\n\n"
-            "Pilih fungsi:",
+            "ke fungsi bot.",
             admin_menu()
         )
 
     elif data == "status_server":
 
         if not is_admin(chat_id):
-
-            send_message(
-                chat_id,
-                "⛔ Akses ditolak."
-            )
-
+            send_message(chat_id, "⛔ Akses ditolak.")
             return
 
         xray = service_status("xray")
@@ -572,15 +714,244 @@ def handle_callback(update):
             admin_menu()
         )
 
+    elif data == "kelola_akun":
+
+        if not is_admin(chat_id):
+            send_message(chat_id, "⛔ Akses ditolak.")
+            return
+
+        edit_message(
+            chat_id,
+            message_id,
+            "👥 *KELOLA AKUN*\n\n"
+            "Pilih jenis akun:",
+            account_menu()
+        )
+
+    elif data == "akun_vmess":
+
+        if not is_admin(chat_id):
+            send_message(chat_id, "⛔ Akses ditolak.")
+            return
+
+        edit_message(
+            chat_id,
+            message_id,
+            account_type_page("vmess"),
+            account_menu()
+        )
+
+    elif data == "akun_vless":
+
+        if not is_admin(chat_id):
+            send_message(chat_id, "⛔ Akses ditolak.")
+            return
+
+        edit_message(
+            chat_id,
+            message_id,
+            account_type_page("vless"),
+            account_menu()
+        )
+
+    elif data == "akun_trojan":
+
+        if not is_admin(chat_id):
+            send_message(chat_id, "⛔ Akses ditolak.")
+            return
+
+        edit_message(
+            chat_id,
+            message_id,
+            account_type_page("trojan"),
+            account_menu()
+        )
+
+    elif data == "akun_ssh":
+
+        if not is_admin(chat_id):
+            send_message(chat_id, "⛔ Akses ditolak.")
+            return
+
+        edit_message(
+            chat_id,
+            message_id,
+            account_type_page("ssh"),
+            account_menu()
+        )
+
+    elif data == "daftar_akun":
+
+        if not is_admin(chat_id):
+            send_message(chat_id, "⛔ Akses ditolak.")
+            return
+
+        edit_message(
+            chat_id,
+            message_id,
+            "📋 *DAFTAR AKUN*\n\n"
+            "Daftar akun akan diambil langsung "
+            "dari database/script Ayah Alma.",
+            account_menu()
+        )
+
+    elif data == "buat_akun":
+
+        if not is_admin(chat_id):
+            send_message(chat_id, "⛔ Akses ditolak.")
+            return
+
+        edit_message(
+            chat_id,
+            message_id,
+            "➕ *BUAT AKUN*\n\n"
+            "Pilih jenis akun terlebih dahulu.\n\n"
+            "Setelah script generator Ayah Alma "
+            "teridentifikasi, proses pembuatan akun "
+            "akan dihubungkan langsung.",
+            account_menu()
+        )
+
+    elif data == "hapus_akun":
+
+        if not is_admin(chat_id):
+            send_message(chat_id, "⛔ Akses ditolak.")
+            return
+
+        edit_message(
+            chat_id,
+            message_id,
+            "🗑 *HAPUS AKUN*\n\n"
+            "Fungsi penghapusan akan menggunakan "
+            "script akun Ayah Alma yang sebenarnya.",
+            account_menu()
+        )
+
+    elif data == "renew_akun":
+
+        if not is_admin(chat_id):
+            send_message(chat_id, "⛔ Akses ditolak.")
+            return
+
+        edit_message(
+            chat_id,
+            message_id,
+            "🔄 *RENEW AKUN*\n\n"
+            "Fungsi renew akan menggunakan database "
+            "dan script akun Ayah Alma.",
+            account_menu()
+        )
+
+    # --------------------------------------------------------
+    # PRODUCTS
+    # --------------------------------------------------------
+
+    elif data == "admin_produk":
+
+        if not is_admin(chat_id):
+            send_message(chat_id, "⛔ Akses ditolak.")
+            return
+
+        edit_message(
+            chat_id,
+            message_id,
+            "📦 *KELOLA PRODUK*\n\n"
+            "Pilih produk:",
+            product_menu()
+        )
+
+    elif data in (
+        "produk_vmess",
+        "produk_vless",
+        "produk_trojan",
+        "produk_ssh"
+    ):
+
+        if not is_admin(chat_id):
+            send_message(chat_id, "⛔ Akses ditolak.")
+            return
+
+        product = data.replace("produk_", "").upper()
+
+        edit_message(
+            chat_id,
+            message_id,
+            f"📦 *PRODUK {product}*\n\n"
+            "Pengaturan harga dan paket akan "
+            "dihubungkan ke sistem produk Ayah Alma.",
+            product_menu()
+        )
+
+    # --------------------------------------------------------
+    # ORDERS
+    # --------------------------------------------------------
+
+    elif data == "pesanan":
+
+        if not is_admin(chat_id):
+            send_message(chat_id, "⛔ Akses ditolak.")
+            return
+
+        edit_message(
+            chat_id,
+            message_id,
+            "🧾 *PESANAN*\n\n"
+            "Menu pengelolaan pesanan siap digunakan.\n\n"
+            "Data pesanan akan dihubungkan ke database "
+            "panel Faysal/Ayah Alma.",
+            admin_menu()
+        )
+
+    # --------------------------------------------------------
+    # PAYMENT
+    # --------------------------------------------------------
+
+    elif data == "pembayaran":
+
+        if not is_admin(chat_id):
+            send_message(chat_id, "⛔ Akses ditolak.")
+            return
+
+        edit_message(
+            chat_id,
+            message_id,
+            "💰 *PEMBAYARAN*\n\n"
+            "Menu pembayaran admin.\n\n"
+            "Konfirmasi pembayaran dan otomatisasi "
+            "pembuatan akun akan dihubungkan kemudian.",
+            admin_menu()
+        )
+
+    # --------------------------------------------------------
+    # BOT SETTINGS
+    # --------------------------------------------------------
+
+    elif data == "pengaturan_bot":
+
+        if not is_admin(chat_id):
+            send_message(chat_id, "⛔ Akses ditolak.")
+            return
+
+        edit_message(
+            chat_id,
+            message_id,
+            "⚙️ *PENGATURAN BOT*\n\n"
+            f"Config: `{CONFIG_FILE}`\n\n"
+            f"Admin Chat ID: `{ADMIN_CHAT_ID}`\n"
+            "Bot Token: terkonfigurasi\n\n"
+            "Pengaturan lanjutan akan ditambahkan "
+            "ke menu ini.",
+            admin_menu()
+        )
+
+    # --------------------------------------------------------
+    # VPS
+    # --------------------------------------------------------
+
     elif data == "menu_vps":
 
         if not is_admin(chat_id):
-
-            send_message(
-                chat_id,
-                "⛔ Akses ditolak."
-            )
-
+            send_message(chat_id, "⛔ Akses ditolak.")
             return
 
         edit_message(
@@ -590,15 +961,14 @@ def handle_callback(update):
             admin_menu()
         )
 
+    # --------------------------------------------------------
+    # RESTART XRAY
+    # --------------------------------------------------------
+
     elif data == "restart_xray":
 
         if not is_admin(chat_id):
-
-            send_message(
-                chat_id,
-                "⛔ Akses ditolak."
-            )
-
+            send_message(chat_id, "⛔ Akses ditolak.")
             return
 
         if restart_service("xray"):
@@ -610,9 +980,7 @@ def handle_callback(update):
 
         else:
 
-            text = (
-                "❌ *Gagal melakukan restart Xray.*"
-            )
+            text = "❌ *Gagal melakukan restart Xray.*"
 
         edit_message(
             chat_id,
@@ -621,15 +989,14 @@ def handle_callback(update):
             admin_menu()
         )
 
+    # --------------------------------------------------------
+    # RESTART SSH
+    # --------------------------------------------------------
+
     elif data == "restart_ssh":
 
         if not is_admin(chat_id):
-
-            send_message(
-                chat_id,
-                "⛔ Akses ditolak."
-            )
-
+            send_message(chat_id, "⛔ Akses ditolak.")
             return
 
         if restart_service("ssh"):
@@ -641,9 +1008,7 @@ def handle_callback(update):
 
         else:
 
-            text = (
-                "❌ *Gagal melakukan restart SSH.*"
-            )
+            text = "❌ *Gagal melakukan restart SSH.*"
 
         edit_message(
             chat_id,
@@ -651,6 +1016,10 @@ def handle_callback(update):
             text,
             admin_menu()
         )
+
+    # --------------------------------------------------------
+    # BACK
+    # --------------------------------------------------------
 
     elif data == "back":
 
@@ -662,10 +1031,6 @@ def handle_callback(update):
 # ============================================================
 
 def process_update(update):
-
-    # ========================================================
-    # MESSAGE
-    # ========================================================
 
     if "message" in update:
 
@@ -723,14 +1088,10 @@ def process_update(update):
                 "🤖 *BANTUAN*\n\n"
                 "/start - Menu utama\n"
                 "/id - Melihat Chat ID\n"
+                "/status - Status server\n"
                 "/help - Bantuan\n"
-                "/admin - Admin Panel\n"
-                "/status - Status server"
+                "/admin - Admin Panel"
             )
-
-    # ========================================================
-    # CALLBACK
-    # ========================================================
 
     elif "callback_query" in update:
 
