@@ -866,4 +866,12 @@ def handle_callback(update):
 
         edit_message(
             chat_id,
-           
+
+                if reply_markup is not None:
+        data["reply_markup"] = reply_markup
+
+    requests.post(
+        f"{API_URL}/editMessageText",
+        json=data,
+        timeout=15
+    )
