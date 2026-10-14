@@ -106,7 +106,7 @@ show_dashboard() {
     | |    / __ \|  \/  | __ ) / __ \| |/ /
     | |   | |  | | |\/| |  _ \| |  | | ' /
     | |___| |__| | |  | | |_) | |__| | . \
-    |_____\____/|_|  |_|____/ \____/|_|\_\
+    |_____\____/|_|  |_ |____/ \____/|_|\_\
 LOMBOK_BANNER
     printf '%b' "$C_RESET"
     printf '  %b◆ AYAH ALMA VPN%b  %b%s%b\n' "$C_MAGENTA$C_BOLD" "$C_RESET" "$C_YELLOW" "$PANEL_VERSION" "$C_RESET"
