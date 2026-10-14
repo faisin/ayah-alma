@@ -98,6 +98,16 @@ show_dashboard() {
     month=$(traffic_value month "$iface")
     total=$(traffic_value total "$iface")
 
+    printf '  %bSYSTEM OVERVIEW%b\n' "$C_WHITE$C_BOLD" "$C_RESET"
+    print_label 'Public IP' "$ip"
+    print_label 'Domain' "$domain"
+    print_label 'Operating OS' "${os:-Unknown}"
+    print_label 'Uptime' "${uptime:-Unknown}"
+    print_label 'CPU Usage' "$cpu"
+    print_label 'RAM Usage' "${ram:-N/A}"
+    print_label 'Disk Usage' "${disk:-N/A}"
+
+    
     print_bar
     # Banner LOMBOK berwarna, memakai huruf outline agar tidak terlalu tebal.
     printf '%b' "$C_MAGENTA$C_BOLD"
@@ -113,15 +123,7 @@ LOMBOK_BANNER
     printf '  %bSecure • Simple • Manageable VPN Server%b\n' "$C_DIM" "$C_RESET"
     print_bar
 
-    printf '  %bSYSTEM OVERVIEW%b\n' "$C_WHITE$C_BOLD" "$C_RESET"
-    print_label 'Public IP' "$ip"
-    print_label 'Domain' "$domain"
-    print_label 'Operating OS' "${os:-Unknown}"
-    print_label 'Uptime' "${uptime:-Unknown}"
-    print_label 'CPU Usage' "$cpu"
-    print_label 'RAM Usage' "${ram:-N/A}"
-    print_label 'Disk Usage' "${disk:-N/A}"
-
+    
     print_bar
     printf '  %bSERVICE MONITOR%b\n' "$C_WHITE$C_BOLD" "$C_RESET"
     printf ' %b%-13s%b : ' "$C_CYAN" 'Xray Core' "$C_RESET"; service_state xray; printf '\n'
