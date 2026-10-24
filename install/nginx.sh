@@ -1,7 +1,7 @@
 #!/bin/bash
 set -Eeuo pipefail
 
-echo "[INFO] Installing Nginx bootstrap for ACME Webroot..."
+echo "[INFO] Menyiapkan Nginx untuk instalasi sertifikat DNS-01 Cloudflare..."
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
@@ -21,7 +21,7 @@ else
     echo "[WARNING] config/nginx.conf not found; keeping package nginx.conf"
 fi
 
-# Jangan pernah memuat konfigurasi TLS final sebelum certificate tersedia.
+# Jangan memuat konfigurasi TLS final sebelum sertifikat tersedia.
 rm -f /etc/nginx/conf.d/xray.conf
 
 cat > /etc/nginx/conf.d/acme-bootstrap.conf <<'EOF'
@@ -59,4 +59,4 @@ if ! systemctl is-active --quiet nginx; then
     exit 1
 fi
 
-echo "[INFO] Nginx bootstrap HTTP/Webroot is active."
+echo "[INFO] Nginx siap; validasi sertifikat dilakukan melalui DNS-01 Cloudflare."

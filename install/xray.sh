@@ -98,67 +98,74 @@ if ! "$HOME/.acme.sh/acme.sh" --register-account -m "admin@$domain"; then
     echo -e "${RED}[WARNING] Registrasi akun ACME gagal; lanjut hanya jika akun sudah terdaftar dan proses issue berhasil.${NC}"
 fi
 
-# ================= ACME WEBROOT =================
+# ================= ACME DNS-01 CLOUDFLARE =================
 
-echo -e "${GREEN}📁 Preparing ACME webroot...${NC}"
+printf '\n\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n'
+printf '\033[1;36m   PENGATURAN SERTIFIKAT WILDCARD\033[0m\n'
+printf '\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n'
+echo "Domain utama : $domain"
+echo "Sertifikat   : $domain dan *.$domain"
+echo "Metode       : DNS-01 Cloudflare"
+echo
+echo "Token memerlukan izin Zone:DNS:Edit dan Zone:Zone:Read"
+echo "untuk zona domain ini. Token tidak boleh diunggah ke GitHub."
+echo
 
-mkdir -p /var/www/html/.well-known/acme-challenge
-chmod 755 /var/www/html /var/www/html/.well-known /var/www/html/.well-known/acme-challenge
-
-# Pastikan firewall host tidak memblokir HTTP/HTTPS sebelum validasi ACME.
-for port in 80 443; do
-    iptables -C INPUT -p tcp --dport "$port" -j ACCEPT 2>/dev/null \
-        || iptables -I INPUT 1 -p tcp --dport "$port" -j ACCEPT
-done
-if command -v ip6tables >/dev/null 2>&1; then
-    for port in 80 443; do
-        ip6tables -C INPUT -p tcp --dport "$port" -j ACCEPT 2>/dev/null \
-            || ip6tables -I INPUT 1 -p tcp --dport "$port" -j ACCEPT
-    done
+if [[ -r /dev/tty ]]; then
+    read -rsp "Masukkan Cloudflare API Token: " CF_Token </dev/tty
+    printf '\n'
+else
+    read -rsp "Masukkan Cloudflare API Token: " CF_Token
+    printf '\n'
 fi
-if command -v netfilter-persistent >/dev/null 2>&1; then
-    netfilter-persistent save >/dev/null 2>&1 || true
-fi
+[[ -n "${CF_Token:-}" ]] || { echo -e "${RED}[ERROR] Token Cloudflare tidak boleh kosong.${NC}"; exit 1; }
 
-# Uji Webroot secara lokal; ACME tidak boleh dimulai sebelum Nginx benar-benar
-# menyajikan file challenge dari /var/www/html.
-ACME_TEST="ayah-alma-$(date +%s)-$$"
-printf '%s\n' "$ACME_TEST" > "/var/www/html/.well-known/acme-challenge/$ACME_TEST"
-if ! curl -fsS --max-time 10 "http://127.0.0.1/.well-known/acme-challenge/$ACME_TEST" | grep -Fxq "$ACME_TEST"; then
-    rm -f "/var/www/html/.well-known/acme-challenge/$ACME_TEST"
-    echo -e "${RED}[ERROR] Nginx Webroot ACME lokal tidak dapat menyajikan challenge.${NC}"
-    nginx -T 2>&1 | tail -n 80 || true
-    exit 1
-fi
-rm -f "/var/www/html/.well-known/acme-challenge/$ACME_TEST"
+# Simpan kredensial dengan izin ketat; jangan tampilkan token ke log.
+mkdir -p /root/.acme.sh
+chmod 700 /root/.acme.sh
+umask 077
+export CF_Token
 
-# ================= ISSUE CERT =================
-
-mkdir -p /var/www/html/.well-known/acme-challenge
-
-"$HOME/.acme.sh/acme.sh" \
-    --issue \
-    -d "$domain" \
-    --webroot /var/www/html \
-    --keylength ec-256 || {
-        echo -e "${RED}[ERROR] Failed to issue SSL certificate!${NC}"
+# Pasang dependensi DNS dan pastikan acme.sh tersedia.
+if [[ ! -s "$HOME/.acme.sh/acme.sh" ]]; then
+    echo -e "${GREEN}Menginstall acme.sh...${NC}"
+    curl -fsSL --retry 3 --connect-timeout 15 https://get.acme.sh | sh -s email="admin@$domain" || {
+        echo -e "${RED}[ERROR] Gagal mengunduh/memasang acme.sh.${NC}"
         exit 1
-}
+    }
+fi
+[[ -s "$HOME/.acme.sh/acme.sh" ]] || { echo -e "${RED}[ERROR] Binary acme.sh tidak ditemukan.${NC}"; exit 1; }
+chmod +x "$HOME/.acme.sh/acme.sh"
+"$HOME/.acme.sh/acme.sh" --set-default-ca --server letsencrypt
+if ! "$HOME/.acme.sh/acme.sh" --register-account -m "admin@$domain"; then
+    echo -e "${YELLOW}[PERINGATAN] Registrasi akun ACME gagal; akan dilanjutkan jika akun sudah terdaftar.${NC}"
+fi
 
-# ================= INSTALL CERT =================
+# DNS-01 tidak membutuhkan HTTP challenge maupun pengambilalihan port 80/443.
+echo -e "${GREEN}Menerbitkan sertifikat wildcard melalui Cloudflare DNS-01...${NC}"
+"$HOME/.acme.sh/acme.sh" \
+    --issue --dns dns_cf \
+    -d "$domain" \
+    -d "*.$domain" \
+    --keylength ec-256 || {
+        unset CF_Token
+        echo -e "${RED}[ERROR] Gagal menerbitkan sertifikat DNS-01. Periksa token dan DNS Cloudflare.${NC}"
+        exit 1
+    }
+unset CF_Token
 
+# Pasang sertifikat ke lokasi yang dipakai konfigurasi Xray.
 mkdir -p /etc/xray
-
 "$HOME/.acme.sh/acme.sh" \
     --install-cert \
     -d "$domain" \
     --ecc \
     --key-file /etc/xray/private.key \
     --fullchain-file /etc/xray/cert.crt \
-    --reloadcmd "systemctl reload nginx" || {
-        echo -e "${RED}[ERROR] Failed to install certificate!${NC}"
+    --reloadcmd 'systemctl reload nginx; if systemctl is-active --quiet xray; then systemctl restart xray; fi' || {
+        echo -e "${RED}[ERROR] Gagal memasang sertifikat.${NC}"
         exit 1
-}
+    }
 
 # ================= PERMISSION =================
 
