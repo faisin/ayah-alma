@@ -65,6 +65,44 @@ else
 fi
 chmod 644 /etc/issue.net
 
+# ================= SSH SSL-ONLY (TLS TANPA WEBSOCKET) =================
+# TLS diterminasi oleh stunnel pada loopback, lalu diteruskan ke OpenSSH.
+# Port publik 444 diteruskan oleh Nginx Stream ke 127.0.0.1:2222.
+if [[ ! -s /etc/xray/cert.crt || ! -s /etc/xray/private.key ]]; then
+    echo -e "${RED}[ERROR] Sertifikat Let's Encrypt belum tersedia; SSH SSL-only tidak dapat disiapkan.${NC}"
+    exit 1
+fi
+
+mkdir -p /etc/stunnel
+cat > /etc/stunnel/ayah-ssh-ssl.conf <<'EOF'
+client = no
+foreground = yes
+sslVersionMin = TLSv1.2
+
+[ssh-ssl-only]
+accept = 127.0.0.1:2222
+connect = 127.0.0.1:22
+cert = /etc/xray/cert.crt
+key = /etc/xray/private.key
+EOF
+chmod 600 /etc/stunnel/ayah-ssh-ssl.conf
+
+cat > /etc/systemd/system/ayah-ssh-ssl.service <<'EOF'
+[Unit]
+Description=AYAH ALMA SSH SSL-only (TLS without WebSocket)
+After=network.target ssh.service
+Wants=ssh.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/stunnel4 /etc/stunnel/ayah-ssh-ssl.conf
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 cat > /etc/systemd/system/dropbear.service <<EOF
 [Unit]
 Description=Dropbear SSH Server
@@ -150,7 +188,7 @@ systemctl daemon-reload
 
 # ================= ENABLE & START SERVICES =================
 
-for svc in ssh dropbear dropbear-ws stunnel-ws udpgw udp-custom; do
+for svc in ssh dropbear dropbear-ws stunnel-ws udpgw udp-custom ayah-ssh-ssl; do
     if systemctl list-unit-files | grep -q "^${svc}.service"; then
         systemctl enable "$svc" >/dev/null 2>&1
         systemctl restart "$svc" >/dev/null 2>&1
@@ -170,6 +208,7 @@ OpenSSH             : 22
 Dropbear            : 109,143
 SSH Websocket       : 2082
 SSH SSL Websocket   : 2096
+SSH SSL-only        : 444 (TLS tanpa WebSocket)
 BadVPN UDPGW        : 7300
 
 ━━━━━━━━━━━━━━━━━━━━━━

@@ -29,9 +29,9 @@ apt update -y || exit 1
 apt install -y \
     curl wget cron jq unzip \
     gnupg coreutils lsof qrencode \
-    ca-certificates openssl file || exit 1
+    ca-certificates openssl file libnginx-mod-stream || exit 1
 
-mkdir -p /etc/xray /var/log/xray /usr/local/bin
+mkdir -p /etc/xray /var/log/xray /usr/local/bin /etc/nginx/streams-enabled
 
 # ================= INSTALL VENDORED XRAY =================
 
@@ -99,40 +99,21 @@ echo "$domain" > /etc/xray/trojan-domain
 systemctl enable cron || exit 1
 systemctl restart cron || exit 1
 
-# ================= ACME DNS-01 CLOUDFLARE =================
-# Domain layanan tidak diubah.
-# Sertifikat diterbitkan untuk domain induk dan wildcard.
+# ================= ACME HTTP-01 STANDALONE =================
+# Standalone memakai port 80, jadi Nginx dihentikan sementara saat penerbitan.
+# Sertifikat hanya diterbitkan untuk domain layanan; metode HTTP-01 tidak mendukung wildcard.
 
-CERT_DOMAIN="adyersasak.my.id"
+CERT_DOMAIN="$domain"
 
 printf '\n\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n'
-printf '\033[1;36m   PENGATURAN SERTIFIKAT WILDCARD\033[0m\n'
+printf '\033[1;36m   PENGATURAN SERTIFIKAT LET\x27S ENCRYPT\033[0m\n'
 printf '\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n'
 
 echo "Domain layanan    : $domain"
 echo "Domain sertifikat : $CERT_DOMAIN"
-echo "Sertifikat        : $CERT_DOMAIN dan *.$CERT_DOMAIN"
-echo "Metode            : DNS-01 Cloudflare"
+echo "Metode            : HTTP-01 Standalone"
+echo "Port validasi     : 80 (Nginx dihentikan sementara)"
 echo
-echo "Token membutuhkan izin Zone:DNS:Edit dan Zone:Zone:Read."
-echo "Jangan unggah token ke GitHub."
-echo
-
-if [[ -r /dev/tty ]]; then
-    read -rsp "Masukkan Cloudflare API Token: " CF_Token </dev/tty
-    printf '\n'
-else
-    read -rsp "Masukkan Cloudflare API Token: " CF_Token
-    printf '\n'
-fi
-
-if [[ -z "${CF_Token:-}" ]]; then
-    echo -e "${RED}[ERROR] Token Cloudflare tidak boleh kosong.${NC}"
-    exit 1
-fi
-
-umask 077
-export CF_Token
 
 # Instal acme.sh hanya jika belum tersedia.
 if [[ ! -s "$HOME/.acme.sh/acme.sh" ]]; then
@@ -140,7 +121,6 @@ if [[ ! -s "$HOME/.acme.sh/acme.sh" ]]; then
 
     curl -fsSL --retry 3 --connect-timeout 15 https://get.acme.sh |
         sh -s email="admin@$CERT_DOMAIN" || {
-            unset CF_Token
             echo -e "${RED}[ERROR] Gagal memasang acme.sh.${NC}"
             exit 1
         }
@@ -149,7 +129,6 @@ fi
 ACME="$HOME/.acme.sh/acme.sh"
 
 if [[ ! -s "$ACME" ]]; then
-    unset CF_Token
     echo -e "${RED}[ERROR] Binary acme.sh tidak ditemukan.${NC}"
     exit 1
 fi
@@ -157,7 +136,6 @@ fi
 chmod +x "$ACME"
 
 "$ACME" --set-default-ca --server letsencrypt || {
-    unset CF_Token
     echo -e "${RED}[ERROR] Gagal memilih Let's Encrypt.${NC}"
     exit 1
 }
@@ -166,23 +144,42 @@ if ! "$ACME" --register-account -m "admin@$CERT_DOMAIN"; then
     echo -e "${YELLOW}[PERINGATAN] Registrasi akun gagal atau akun sudah terdaftar. Melanjutkan ke penerbitan sertifikat.${NC}"
 fi
 
-# DNS-01 tidak membutuhkan HTTP challenge.
-# Tidak mengubah domain layanan di /etc/xray/domain.
+# Pastikan Nginx hidup kembali, termasuk jika penerbitan sertifikat gagal.
+restore_nginx() {
+    systemctl start nginx || true
+}
+trap restore_nginx EXIT
 
-echo -e "${GREEN}Menerbitkan sertifikat wildcard melalui Cloudflare DNS-01...${NC}"
+echo -e "${YELLOW}[INFO] Menghentikan Nginx sementara agar port 80 tersedia...${NC}"
+systemctl stop nginx || {
+    echo -e "${RED}[ERROR] Gagal menghentikan Nginx.${NC}"
+    exit 1
+}
 
+sleep 1
+if lsof -nP -iTCP:80 -sTCP:LISTEN 2>/dev/null | grep -q LISTEN; then
+    echo -e "${RED}[ERROR] Port 80 masih digunakan proses lain; sertifikat tidak diterbitkan.${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}Menerbitkan sertifikat Let's Encrypt melalui HTTP-01 Standalone...${NC}"
 "$ACME" \
-    --issue --dns dns_cf \
+    --issue --standalone \
     -d "$CERT_DOMAIN" \
-    -d "*.$CERT_DOMAIN" \
-    --keylength ec-256 || {
-        unset CF_Token
-        echo -e "${RED}[ERROR] Gagal menerbitkan sertifikat DNS-01.${NC}"
-        echo -e "${RED}Periksa token, izin Cloudflare, dan zona DNS.${NC}"
+    --keylength ec-256 \
+    --pre-hook "systemctl stop nginx" \
+    --post-hook "systemctl start nginx" || {
+        echo -e "${RED}[ERROR] Gagal menerbitkan sertifikat HTTP-01.${NC}"
+        echo -e "${RED}Pastikan DNS domain mengarah ke IP VPS dan TCP port 80 dapat diakses dari internet.${NC}"
         exit 1
     }
 
-unset CF_Token
+# Nginx disambungkan kembali segera setelah proses penerbitan selesai.
+systemctl start nginx || {
+    echo -e "${RED}[ERROR] Sertifikat terbit, tetapi Nginx gagal dinyalakan kembali.${NC}"
+    exit 1
+}
+trap - EXIT
 
 # ================= INSTALL CERTIFICATE =================
 
@@ -194,7 +191,7 @@ mkdir -p /etc/xray
     --ecc \
     --key-file /etc/xray/private.key \
     --fullchain-file /etc/xray/cert.crt \
-    --reloadcmd 'if systemctl is-active --quiet nginx; then systemctl reload nginx; fi; if systemctl is-active --quiet xray; then systemctl restart xray; fi' || {
+    --reloadcmd 'if systemctl is-active --quiet nginx; then systemctl reload nginx; fi; if systemctl is-active --quiet xray; then systemctl restart xray; fi; if systemctl is-active --quiet ayah-ssh-ssl; then systemctl restart ayah-ssh-ssl; fi' || {
         echo -e "${RED}[ERROR] Gagal memasang sertifikat.${NC}"
         exit 1
     }
@@ -222,6 +219,18 @@ chmod 644 /etc/xray/cert.crt
 
 rm -f /etc/nginx/conf.d/acme-bootstrap.conf
 
+# Ensure stream context exists for raw TCP/TLS passthrough listeners.
+if ! grep -Eq '^[[:space:]]*stream[[:space:]]*\{' /etc/nginx/nginx.conf; then
+    if grep -Eq '^[[:space:]]*http[[:space:]]*\{' /etc/nginx/nginx.conf; then
+        sed -i '/^[[:space:]]*http[[:space:]]*{/i stream {\n    include /etc/nginx/streams-enabled/*.conf;\n}\n' /etc/nginx/nginx.conf
+    else
+        echo -e "${RED}[ERROR] Tidak menemukan blok http {} di /etc/nginx/nginx.conf.${NC}"
+        exit 1
+    fi
+fi
+
+cp "$SCRIPT_DIR/config/xray-stream.conf" /etc/nginx/streams-enabled/xray-stream.conf
+chmod 644 /etc/nginx/streams-enabled/xray-stream.conf
 cp "$SCRIPT_DIR/config/xray.conf" /etc/nginx/conf.d/xray.conf
 chmod 644 /etc/nginx/conf.d/xray.conf
 
@@ -345,7 +354,7 @@ Raw TLS SNI    : ${vmess_domain}, ${vless_domain}, ${trojan_domain}"
 
 echo -e "XRAY Config    : /etc/xray/config.json"
 echo -e "NGINX Config   : /etc/nginx/conf.d/xray.conf"
-echo -e "TLS Certificate: ${CERT_DOMAIN} and *.${CERT_DOMAIN}"
+echo -e "TLS Certificate: ${CERT_DOMAIN}"
 
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
