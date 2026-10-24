@@ -69,7 +69,8 @@ tmpfile=$(mktemp)
 if ! jq --arg user "$user" '
 (.inbounds[] | select(.tag=="vless-ws-tls").settings.clients) |= [ .[] | select(.email != $user) ] |
 (.inbounds[] | select(.tag=="vless-ws-nontls").settings.clients) |= [ .[] | select(.email != $user) ] |
-(.inbounds[] | select(.tag=="vless-grpc").settings.clients) |= [ .[] | select(.email != $user) ]
+(.inbounds[] | select(.tag=="vless-grpc").settings.clients) |= [ .[] | select(.email != $user) ] |
+(.inbounds[] | select(.tag=="vless-httpupgrade").settings.clients) |= [ .[] | select(.email != $user) ]
 ' "$CONFIG" > "$tmpfile"; then
     echo -e "${RED}❌ Gagal memproses konfigurasi!${NC}"
     rm -f "$tmpfile"

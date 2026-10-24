@@ -63,6 +63,9 @@ if ! jq --arg uuid "$uuid" --arg user "$user" '
 [{"id":$uuid,"email":$user}] |
 
 (.inbounds[] | select(.tag=="vless-grpc").settings.clients) +=
+[{"id":$uuid,"email":$user}] |
+
+(.inbounds[] | select(.tag=="vless-httpupgrade").settings.clients) +=
 [{"id":$uuid,"email":$user}]
 ' /etc/xray/config.json > "$tmpfile"; then
 
@@ -132,6 +135,8 @@ vlesslink1="vless://${uuid}@${domain}:${tls}?encryption=none&security=tls&sni=${
 vlesslink2="vless://${uuid}@${domain}:${none}?encryption=none&type=ws&host=${domain}&path=%2Fvless#${user}"
 
 vlesslink3="vless://${uuid}@${domain}:${grpc}?mode=gun&security=tls&encryption=none&type=grpc&serviceName=vless-grpc&sni=${domain}#${user}"
+vlesslink4="vless://${uuid}@${domain}:443?encryption=none&security=tls&sni=${domain}&type=httpupgrade&host=${domain}&path=%2Fupvless#${user}-HTTPUpgrade-TLS"
+vlesslink5="vless://${uuid}@${domain}:80?encryption=none&security=none&type=httpupgrade&host=${domain}&path=%2Fupvless#${user}-HTTPUpgrade"
 
 clear
 
@@ -158,6 +163,12 @@ echo -e "${vlesslink2}"
 echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
 echo -e "Link gRPC      :"
 echo -e "${vlesslink3}"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+echo -e "Link HTTPUpgrade TLS (443):"
+echo -e "${vlesslink4}"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+echo -e "Link HTTPUpgrade non-TLS (80):"
+echo -e "${vlesslink5}"
 echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
 echo -e "Expired On     : ${exp}"
 echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"

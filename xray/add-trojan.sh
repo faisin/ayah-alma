@@ -59,6 +59,9 @@ if ! jq --arg uuid "$uuid" --arg user "$user" '
 [{"password":$uuid,"email":$user}] |
 
 (.inbounds[] | select(.tag=="trojan-grpc").settings.clients) +=
+[{"password":$uuid,"email":$user}] |
+
+(.inbounds[] | select(.tag=="trojan-httpupgrade").settings.clients) +=
 [{"password":$uuid,"email":$user}]
 ' /etc/xray/config.json > "$tmpfile"; then
 
@@ -127,6 +130,8 @@ trojanlink1="trojan://${uuid}@${domain}:${tls}?path=%2Ftrojan-ws&security=tls&ty
 
 # generate trojan grpc
 trojanlink2="trojan://${uuid}@${domain}:${grpc}?mode=gun&security=tls&type=grpc&serviceName=trojan-grpc&sni=${domain}#${user}"
+trojanlink3="trojan://${uuid}@${domain}:443?security=tls&sni=${domain}&type=httpupgrade&host=${domain}&path=%2Fuptrojan#${user}-HTTPUpgrade-TLS"
+trojanlink4="trojan://${uuid}@${domain}:80?security=none&type=httpupgrade&host=${domain}&path=%2Fuptrojan#${user}-HTTPUpgrade"
 
 clear
 
@@ -148,6 +153,12 @@ echo -e "${trojanlink1}"
 echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
 echo -e "Link gRPC      :"
 echo -e "${trojanlink2}"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+echo -e "Link HTTPUpgrade TLS (443):"
+echo -e "${trojanlink3}"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+echo -e "Link HTTPUpgrade non-TLS (80):"
+echo -e "${trojanlink4}"
 echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
 echo -e "Expired On     : ${exp}"
 echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"

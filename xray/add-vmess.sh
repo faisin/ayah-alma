@@ -68,6 +68,9 @@ if ! jq --arg uuid "$uuid" --arg user "$user" '
 [{"id":$uuid,"alterId":0,"email":$user}] |
 
 (.inbounds[] | select(.tag=="vmess-grpc").settings.clients) +=
+[{"id":$uuid,"alterId":0,"email":$user}] |
+
+(.inbounds[] | select(.tag=="vmess-httpupgrade").settings.clients) +=
 [{"id":$uuid,"alterId":0,"email":$user}]
 ' /etc/xray/config.json > "$tmpfile"; then
 
@@ -193,6 +196,26 @@ EOF
 
 vmesslink3="vmess://$(echo "$vmess_json_grpc" | base64 -w 0)"
 
+# HTTPUpgrade via Nginx public ports 443 (TLS) and 80 (non-TLS)
+vmess_json_httpupgrade_tls=$(cat <<EOF
+{
+  "v":"2","ps":"${user} - HTTPUpgrade TLS","add":"${domain}","port":"443",
+  "id":"${uuid}","aid":"0","net":"httpupgrade","type":"none",
+  "host":"${domain}","path":"/upvmess","tls":"tls","sni":"${domain}"
+}
+EOF
+)
+vmess_json_httpupgrade_none=$(cat <<EOF
+{
+  "v":"2","ps":"${user} - HTTPUpgrade","add":"${domain}","port":"80",
+  "id":"${uuid}","aid":"0","net":"httpupgrade","type":"none",
+  "host":"${domain}","path":"/upvmess","tls":"none"
+}
+EOF
+)
+vmesslink4="vmess://$(echo "$vmess_json_httpupgrade_tls" | base64 -w 0)"
+vmesslink5="vmess://$(echo "$vmess_json_httpupgrade_none" | base64 -w 0)"
+
 clear
 
 echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
@@ -219,6 +242,12 @@ echo -e "${vmesslink2}"
 echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
 echo -e "Link gRPC      :"
 echo -e "${vmesslink3}"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+echo -e "Link HTTPUpgrade TLS (443):"
+echo -e "${vmesslink4}"
+echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+echo -e "Link HTTPUpgrade non-TLS (80):"
+echo -e "${vmesslink5}"
 echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
 echo -e "Expired On     : ${exp} (${masaaktif})"
 echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"

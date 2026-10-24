@@ -60,7 +60,8 @@ tmpfile=$(mktemp)
 
 if ! jq --arg user "$user" '
 (.inbounds[] | select(.tag=="trojan-ws-tls").settings.clients) |= [ .[] | select(.email != $user) ] |
-(.inbounds[] | select(.tag=="trojan-grpc").settings.clients) |= [ .[] | select(.email != $user) ]
+(.inbounds[] | select(.tag=="trojan-grpc").settings.clients) |= [ .[] | select(.email != $user) ] |
+(.inbounds[] | select(.tag=="trojan-httpupgrade").settings.clients) |= [ .[] | select(.email != $user) ]
 ' "$CONFIG" > "$tmpfile"; then
     echo -e "${RED}❌ Gagal memproses konfigurasi!${NC}"
     rm -f "$tmpfile"

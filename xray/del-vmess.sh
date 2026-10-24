@@ -69,7 +69,8 @@ tmpfile=$(mktemp)
 if ! jq --arg user "$user" '
 (.inbounds[] | select(.tag=="vmess-ws-tls").settings.clients) |= [ .[] | select(.email != $user) ] |
 (.inbounds[] | select(.tag=="vmess-ws-nontls").settings.clients) |= [ .[] | select(.email != $user) ] |
-(.inbounds[] | select(.tag=="vmess-grpc").settings.clients) |= [ .[] | select(.email != $user) ]
+(.inbounds[] | select(.tag=="vmess-grpc").settings.clients) |= [ .[] | select(.email != $user) ] |
+(.inbounds[] | select(.tag=="vmess-httpupgrade").settings.clients) |= [ .[] | select(.email != $user) ]
 ' "$CONFIG" > "$tmpfile"; then
     echo -e "${RED}❌ Gagal memproses konfigurasi!${NC}"
     rm -f "$tmpfile"
