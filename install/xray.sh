@@ -100,80 +100,41 @@ systemctl enable cron || exit 1
 systemctl restart cron || exit 1
 
 # ================= ACME CERTIFICATE =================
-# Custom domain: Cloudflare DNS-01 wildcard. sslip.io fallback: HTTP-01 single domain.
-CERT_DOMAIN="adyersasak.my.id"
-ACME_MODE="dns_cf_wildcard"
-if [[ "$domain" == *.sslip.io ]]; then
-    CERT_DOMAIN="$domain"
-    ACME_MODE="http01"
-elif [[ "$domain" != "$CERT_DOMAIN" && "$domain" != *."$CERT_DOMAIN" ]]; then
-    echo -e "${RED}[ERROR] Domain layanan harus adyersasak.my.id atau subdomain di bawahnya; opsi IP otomatis memakai sslip.io.${NC}"
-    echo -e "${YELLOW}Contoh domain layanan: v9.adyersasak.my.id${NC}"
-    exit 1
-fi
+# Gunakan HTTP-01 Webroot dan
+# tidak menerbitkan wildcard; sertifikat hanya untuk domain layanan.
+CERT_DOMAIN="$domain"
+ACME_MODE="http01_webroot"
 
 printf '\n\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n'
 printf '\033[1;36m   PENGATURAN SERTIFIKAT LET\x27S ENCRYPT\033[0m\n'
 printf '\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n'
 echo "Domain layanan    : $domain"
-if [[ "$ACME_MODE" == "dns_cf_wildcard" ]]; then
-    echo "Domain sertifikat : $CERT_DOMAIN dan *.$CERT_DOMAIN"
-    echo "Metode            : DNS-01 Cloudflare"
-    echo "Token memerlukan izin Zone:DNS:Edit dan Zone:Zone:Read."
-    echo "Jangan bagikan token dan jangan menyimpannya di GitHub."
-    echo
-    if [[ -r /dev/tty ]]; then
-        read -rsp "Masukkan Cloudflare API Token: " CF_Token </dev/tty
-        printf '\n'
-    else
-        read -rsp "Masukkan Cloudflare API Token: " CF_Token
-        printf '\n'
-    fi
-    [[ -n "${CF_Token:-}" ]] || { echo -e "${RED}[ERROR] Token Cloudflare tidak boleh kosong.${NC}"; exit 1; }
-    umask 077
-    export CF_Token
-else
-    echo "Domain sertifikat : $CERT_DOMAIN"
-    echo "Metode            : HTTP-01 Standalone (port 80)"
-fi
+echo "Domain sertifikat : $CERT_DOMAIN"
+echo "Metode            : HTTP-01 Webroot (port 80)"
+echo "Direktori challenge: /var/www/html/.well-known/acme-challenge"
+
+mkdir -p /var/www/html/.well-known/acme-challenge
+chmod 755 /var/www/html /var/www/html/.well-known /var/www/html/.well-known/acme-challenge
 
 echo -e "${GREEN}🔐 Memastikan acme.sh tersedia...${NC}"
 if [[ ! -s "$HOME/.acme.sh/acme.sh" ]]; then
     curl -fsSL --retry 3 --connect-timeout 15 https://get.acme.sh | sh -s email="admin@$CERT_DOMAIN" || {
-        unset CF_Token 2>/dev/null || true
         echo -e "${RED}[ERROR] Gagal memasang acme.sh.${NC}"; exit 1;
     }
 fi
 ACME="$HOME/.acme.sh/acme.sh"
-[[ -s "$ACME" ]] || { unset CF_Token 2>/dev/null || true; echo -e "${RED}[ERROR] Binary acme.sh tidak ditemukan.${NC}"; exit 1; }
+[[ -s "$ACME" ]] || { echo -e "${RED}[ERROR] Binary acme.sh tidak ditemukan.${NC}"; exit 1; }
 chmod +x "$ACME"
-"$ACME" --set-default-ca --server letsencrypt || { unset CF_Token 2>/dev/null || true; echo -e "${RED}[ERROR] Gagal memilih Let's Encrypt.${NC}"; exit 1; }
+"$ACME" --set-default-ca --server letsencrypt || { echo -e "${RED}[ERROR] Gagal memilih Let's Encrypt.${NC}"; exit 1; }
 if ! "$ACME" --register-account -m "admin@$CERT_DOMAIN"; then
     echo -e "${YELLOW}[PERINGATAN] Akun ACME mungkin sudah terdaftar; melanjutkan.${NC}"
 fi
 
-if [[ "$ACME_MODE" == "dns_cf_wildcard" ]]; then
-    echo -e "${GREEN}Menerbitkan sertifikat wildcard melalui Cloudflare DNS-01...${NC}"
-    "$ACME" --issue --dns dns_cf -d "$CERT_DOMAIN" -d "*.$CERT_DOMAIN" --keylength ec-256 || {
-        unset CF_Token
-        echo -e "${RED}[ERROR] Gagal menerbitkan sertifikat DNS-01. Periksa token, izin zona, dan DNS Cloudflare.${NC}"
-        exit 1
-    }
-    unset CF_Token
-else
-    echo -e "${YELLOW}[INFO] Menghentikan Nginx sementara untuk validasi HTTP-01 port 80...${NC}"
-    systemctl stop nginx || { echo -e "${RED}[ERROR] Gagal menghentikan Nginx.${NC}"; exit 1; }
-    restore_nginx() { systemctl start nginx || true; }
-    trap restore_nginx EXIT
-    if lsof -nP -iTCP:80 -sTCP:LISTEN 2>/dev/null | grep -q LISTEN; then
-        echo -e "${RED}[ERROR] Port 80 masih digunakan proses lain.${NC}"; exit 1
-    fi
-    "$ACME" --issue --standalone -d "$CERT_DOMAIN" --keylength ec-256 || {
-        echo -e "${RED}[ERROR] Gagal menerbitkan sertifikat HTTP-01. Pastikan DNS dan port 80 dapat diakses.${NC}"; exit 1
-    }
-    systemctl start nginx || { echo -e "${RED}[ERROR] Sertifikat terbit, tetapi Nginx gagal aktif kembali.${NC}"; exit 1; }
-    trap - EXIT
-fi
+echo -e "${GREEN}Menerbitkan sertifikat HTTP-01 melalui Webroot...${NC}"
+"$ACME" --issue --webroot /var/www/html -d "$CERT_DOMAIN" --keylength ec-256 || {
+    echo -e "${RED}[ERROR] Gagal menerbitkan sertifikat HTTP-01. Pastikan DNS mengarah ke VPS, port 80 terbuka, dan Nginx melayani /.well-known/acme-challenge/.${NC}"
+    exit 1
+}
 
 # ================= INSTALL CERTIFICATE =================
 
@@ -377,8 +338,8 @@ cat >> /root/log-install.txt <<EOF
 XRAY PANEL (AYAH-ALMA)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Domain layanan       : ${domain}
-Sertifikat           : ${CERT_DOMAIN} dan *.${CERT_DOMAIN}
-Sertifikat metode    : Let's Encrypt DNS-01 Cloudflare
+Sertifikat           : ${CERT_DOMAIN}
+Sertifikat metode    : Let's Encrypt HTTP-01 Webroot
 
 WebSocket:
 VMess WS TLS         : 443 /vmess -> 127.0.0.1:23456
