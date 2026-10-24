@@ -130,40 +130,19 @@ wget -q --show-progress --https-only -O "$ARCHIVE" "$RELEASE_URL" \
     || die "Gagal mengunduh release Ayah Alma."
 unzip -tq "$ARCHIVE" >/dev/null || die "Release Ayah Alma rusak."
 unzip -q "$ARCHIVE" -d "$WORK_DIR/release"
-ZIP_DIR="$WORK_DIR/release/ayah-alma-main"
-[[ -d "$ZIP_DIR" ]] || die "Struktur release Ayah Alma tidak valid."
-
-# Fitur HTTP-01 Standalone + SSH SSL-only harus memakai modul yang sesuai.
-# File fitur ini sengaja di-overlay dari Release meskipun versi lama sudah ada di MAIN.
-# Jika setup.sh dijalankan dari ZIP hasil paket, file lokal menjadi prioritas terakhir.
-FEATURE_FILES=(
-    install/nginx.sh
-    install/xray.sh
-    install/ssh.sh
-    config/xray.conf
-    config/xray-stream.conf
-    ssh/addssh.sh
-    ssh/trialssh.sh
-    SSH-SSL-ONLY.txt
-)
-for rel in "${FEATURE_FILES[@]}"; do
-    if [[ -s "$ZIP_DIR/$rel" ]]; then
-        mkdir -p "$MAIN_DIR/$(dirname "$rel")"
-        cp -f "$ZIP_DIR/$rel" "$MAIN_DIR/$rel"
-        info "Memuat modul fitur dari Release: $rel"
+# Jangan mengasumsikan nama folder ZIP; cari root yang benar-benar berisi source.
+ZIP_DIR=""
+while IFS= read -r -d '' candidate; do
+    if [[ -s "$candidate/install/xray.sh" && -s "$candidate/config/xray.json" ]]; then
+        ZIP_DIR="$candidate"
+        break
     fi
-done
+done < <(find "$WORK_DIR/release" -type f -path '*/install/xray.sh' -print0 | while IFS= read -r -d '' f; do printf '%s\0' "$(dirname "$(dirname "$f")")"; done)
+[[ -n "$ZIP_DIR" && -d "$ZIP_DIR" ]] || die "Struktur Release tidak valid: install/xray.sh dan config/xray.json tidak ditemukan."
+info "Root Release terdeteksi: ${ZIP_DIR#$WORK_DIR/release/}"
 
-# Bila installer dijalankan langsung dari folder ZIP, gunakan file fitur lokal
-# sebagai sumber terakhir agar paket ini tetap lengkap walau Release belum diperbarui.
-PACKAGE_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-for rel in "${FEATURE_FILES[@]}"; do
-    if [[ -s "$PACKAGE_DIR/$rel" ]]; then
-        mkdir -p "$MAIN_DIR/$(dirname "$rel")"
-        cp -f "$PACKAGE_DIR/$rel" "$MAIN_DIR/$rel"
-        info "Memuat modul fitur dari paket lokal: $rel"
-    fi
-done
+# MAIN selalu menjadi sumber utama. Release hanya melengkapi file yang hilang/kosong.
+# Jangan menimpa file MAIN dengan versi Release yang mungkin lebih lama.
 
 missing=()
 for rel in "${required[@]}"; do
@@ -274,11 +253,17 @@ if [[ "$pilihan" == "1" ]]; then
     [[ "$pub_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "IP publik tidak berhasil dideteksi."
     domain="${pub_ip}.sslip.io"
 elif [[ "$pilihan" == "2" ]]; then
-    read_prompt "Masukkan domain utama (contoh adyersasak.my.id, tanpa subdomain): " domain
-    [[ "$domain" =~ ^[A-Za-z0-9.-]+$ ]] || die "Format domain tidak valid."
-    [[ "$domain" != *.*.*.* ]] || die "Format domain tidak valid."
-    [[ "$domain" != *..* && "$domain" != .* && "$domain" != *. ]] || die "Format domain tidak valid."
-    [[ "$domain" != *"*"* ]] || die "Masukkan domain utama, bukan wildcard atau subdomain."
+    read_prompt "Masukkan domain layanan (contoh v9.adyersasak.my.id): " domain
+    domain="${domain,,}"
+    [[ ${#domain} -le 253 && "$domain" =~ ^[a-z0-9.-]+$ ]] || die "Format domain tidak valid."
+    [[ "$domain" != *..* && "$domain" != .* && "$domain" != *. && "$domain" != *"*"* ]] || die "Format domain tidak valid."
+    IFS='.' read -r -a domain_labels <<< "$domain"
+    IFS=$'\n\t'
+    (( ${#domain_labels[@]} >= 2 )) || die "Domain harus memiliki minimal dua bagian, misalnya contoh.com."
+    for label in "${domain_labels[@]}"; do
+        [[ ${#label} -le 63 && "$label" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] || die "Label domain tidak valid: $label"
+    done
+    unset domain_labels
 else die "Pilihan domain tidak valid."; fi
 
 for f in /root/domain /root/scdomain /etc/xray/domain /etc/xray/scdomain /etc/v2ray/domain /etc/v2ray/scdomain; do printf '%s\n' "$domain" > "$f"; done
@@ -287,8 +272,7 @@ info "Domain: $domain"
 
 run_module(){ local rel="$1"; [[ -f "$BASE_DIR/$rel" ]] || die "Module tidak ditemukan: $rel"; info "Menjalankan $rel ..."; (cd "$BASE_DIR" && bash "$BASE_DIR/$rel"); }
 
-# Bootstrap Nginx dipakai sementara; xray.sh menghentikannya saat validasi HTTP-01 Standalone.
-# xray.conf FINAL dipasang oleh xray.sh setelah sertifikat tersedia.
+# Bootstrap Nginx dipakai sementara. xray.sh menerbitkan sertifikat melalui Cloudflare DNS-01; port 80 tidak perlu dihentikan.
 rm -f /etc/nginx/conf.d/xray.conf /etc/nginx/conf.d/acme-bootstrap.conf
 
 run_module install/nginx.sh
