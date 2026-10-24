@@ -239,8 +239,11 @@ if [[ "$pilihan" == "1" ]]; then
     [[ "$pub_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "IP publik tidak berhasil dideteksi."
     domain="${pub_ip}.sslip.io"
 elif [[ "$pilihan" == "2" ]]; then
-    read_prompt "Masukkan domain kamu: " domain
+    read_prompt "Masukkan domain utama (contoh adyersasak.my.id, tanpa subdomain): " domain
     [[ "$domain" =~ ^[A-Za-z0-9.-]+$ ]] || die "Format domain tidak valid."
+    [[ "$domain" != *.*.*.* ]] || die "Format domain tidak valid."
+    [[ "$domain" != *..* && "$domain" != .* && "$domain" != *. ]] || die "Format domain tidak valid."
+    [[ "$domain" != *"*"* ]] || die "Masukkan domain utama, bukan wildcard atau subdomain."
 else die "Pilihan domain tidak valid."; fi
 
 for f in /root/domain /root/scdomain /etc/xray/domain /etc/xray/scdomain /etc/v2ray/domain /etc/v2ray/scdomain; do printf '%s\n' "$domain" > "$f"; done
@@ -249,7 +252,7 @@ info "Domain: $domain"
 
 run_module(){ local rel="$1"; [[ -f "$BASE_DIR/$rel" ]] || die "Module tidak ditemukan: $rel"; info "Menjalankan $rel ..."; (cd "$BASE_DIR" && bash "$BASE_DIR/$rel"); }
 
-# Bootstrap Nginx hanya untuk HTTP/Webroot ACME.
+# Bootstrap Nginx dipakai sementara; validasi sertifikat menggunakan DNS-01 Cloudflare.
 # xray.conf FINAL dipasang oleh xray.sh setelah sertifikat tersedia.
 rm -f /etc/nginx/conf.d/xray.conf /etc/nginx/conf.d/acme-bootstrap.conf
 
