@@ -58,6 +58,15 @@ for port in 80 443; do
     fi
 done
 
+# UDP ZiVPN gateway. Xray carries proxied UDP inside its authenticated proxy
+# connection; it does not require a separate public Xray UDP listener.
+iptables -C INPUT -p udp --dport 5667 -j ACCEPT 2>/dev/null \
+    || iptables -I INPUT 1 -p udp --dport 5667 -j ACCEPT
+if command -v ip6tables >/dev/null 2>&1; then
+    ip6tables -C INPUT -p udp --dport 5667 -j ACCEPT 2>/dev/null \
+        || ip6tables -I INPUT 1 -p udp --dport 5667 -j ACCEPT
+fi
+
 if command -v netfilter-persistent >/dev/null 2>&1; then
     netfilter-persistent save >/dev/null 2>&1 || true
 fi
@@ -69,9 +78,9 @@ else
     SELF_DIR="$PWD"
 fi
 
-# MAIN GitHub menjadi sumber utama.
-# Repository MAIN diambil terlebih dahulu. Release ZIP hanya diambil bila
-# ada file wajib yang hilang/kosong dari MAIN.
+# MAIN GitHub adalah sumber utama; Release ZIP melengkapi file besar/runtime.
+# Semua file dari Release hanya menjadi fallback: file yang sudah ada di MAIN
+# tidak ditimpa. File wajib yang hilang/kosong boleh dipulihkan dari Release.
 WORK_DIR=$(mktemp -d /tmp/ayah-alma.XXXXXX)
 CLEAN_WORK=true
 MAIN_DIR="$WORK_DIR/main"
@@ -79,7 +88,6 @@ ZIP_DIR=""
 mkdir -p "$MAIN_DIR"
 
 MAIN_GIT_URL="https://github.com/faisin/ayah-alma.git"
-MAIN_URL="https://raw.githubusercontent.com/faisin/ayah-alma/main"
 
 info "Mengambil source dari branch main..."
 git clone --depth 1 --filter=blob:none --single-branch --branch main "$MAIN_GIT_URL" "$MAIN_DIR" \
@@ -98,7 +106,6 @@ required=(
     config/nginx.conf
     config/xray.conf
     config/xray.json
-    config/haproxy.cfg
     config/license.conf
     config/udp-custom
     config/udp-custom.json
@@ -114,46 +121,45 @@ required=(
     clearcache
 )
 
+info "Mengambil Release ZIP untuk melengkapi file besar/runtime yang tidak ada di MAIN..."
+ARCHIVE="$WORK_DIR/ayah-alma-release.zip"
+wget -q --show-progress --https-only -O "$ARCHIVE" "$RELEASE_URL" \
+    || die "Gagal mengunduh release Ayah Alma."
+unzip -tq "$ARCHIVE" >/dev/null || die "Release Ayah Alma rusak."
+unzip -q "$ARCHIVE" -d "$WORK_DIR/release"
+ZIP_DIR="$WORK_DIR/release/ayah-alma-main"
+[[ -d "$ZIP_DIR" ]] || die "Struktur release Ayah Alma tidak valid."
+
 missing=()
 for rel in "${required[@]}"; do
-    [[ -s "$MAIN_DIR/$rel" ]] || missing+=("$rel")
-done
-
-if (( ${#missing[@]} > 0 )); then
-    info "MAIN memiliki ${#missing[@]} file wajib yang belum ada/kosong. Mengambil release ZIP sebagai fallback..."
-    ARCHIVE="$WORK_DIR/ayah-alma-release.zip"
-    wget -q --show-progress --https-only -O "$ARCHIVE" "$RELEASE_URL" \
-        || die "Gagal mengunduh release Ayah Alma."
-    unzip -tq "$ARCHIVE" >/dev/null || die "Release Ayah Alma rusak."
-    unzip -q "$ARCHIVE" -d "$WORK_DIR/release"
-    ZIP_DIR="$WORK_DIR/release/ayah-alma-main"
-    [[ -d "$ZIP_DIR" ]] || die "Struktur release Ayah Alma tidak valid."
-
-    for rel in "${missing[@]}"; do
+    if [[ ! -s "$MAIN_DIR/$rel" ]]; then
         if [[ -s "$ZIP_DIR/$rel" ]]; then
             mkdir -p "$MAIN_DIR/$(dirname "$rel")"
-            cp -a "$ZIP_DIR/$rel" "$MAIN_DIR/$rel"
-            info "ZIP fallback: $rel"
+            cp -f "$ZIP_DIR/$rel" "$MAIN_DIR/$rel"
+            info "Release fallback untuk file wajib: $rel"
         else
-            die "File wajib tidak tersedia di MAIN maupun release ZIP: $rel"
+            missing+=("$rel")
         fi
-    done
+    fi
+done
+if (( ${#missing[@]} > 0 )); then
+    printf 'File wajib hilang dari MAIN dan Release:\n' >&2
+    printf ' - %s\n' "${missing[@]}" >&2
+    die "Source tidak lengkap; installer dihentikan sebelum pemasangan."
 fi
 
 BASE_DIR="$MAIN_DIR"
 
-# Runtime/source tambahan dari ZIP hanya boleh masuk untuk file yang belum ada
-# di MAIN. Tidak ada file MAIN yang boleh ditimpa oleh ZIP.
-if [[ -n "$ZIP_DIR" ]]; then
-    for dir in ssh xray wg udp tools sshws internal/go; do
-        if [[ -d "$ZIP_DIR/$dir" ]]; then
-            mkdir -p "$BASE_DIR/$dir"
-            cp -an "$ZIP_DIR/$dir/." "$BASE_DIR/$dir/"
-        fi
-    done
-fi
+# Lengkapi file runtime/biner besar dari Release hanya jika belum ada di MAIN.
+# cp -an menjaga file MAIN, termasuk menu.sh dan varian menu, tetap utuh.
+for dir in "bin/$ARCH" ssh xray wg udp tools config sshws internal/go; do
+    if [[ -d "$ZIP_DIR/$dir" ]]; then
+        mkdir -p "$BASE_DIR/$dir"
+        cp -an "$ZIP_DIR/$dir/." "$BASE_DIR/$dir/"
+    fi
+done
 
-info "Sumber final: MAIN prioritas; ZIP hanya fallback untuk file MAIN yang hilang/kosong."
+info "Sumber final: MAIN prioritas; Release melengkapi file hilang tanpa menimpa file MAIN."
 
 # ================= LICENSE CHECK =================
 # license.conf selalu diambil langsung dari branch main.
@@ -163,18 +169,19 @@ LICENSE_FILE="$BASE_DIR/config/license.conf"
 info "Memastikan konfigurasi lisensi dari main..."
 
 mkdir -p "$(dirname "$LICENSE_FILE")"
-if [[ ! -s "$LICENSE_FILE" ]]; then
-    wget -q --https-only -O "$LICENSE_FILE" "$LICENSE_URL" \
-        || die "Gagal mengambil license.conf dari repository main."
+LICENSE_TMP="$WORK_DIR/license.conf"
+if ! wget -q --https-only --timeout=20 --tries=3 -O "$LICENSE_TMP" "$LICENSE_URL"; then
+    die "Gagal mengambil license.conf terbaru dari repository main. Periksa koneksi GitHub."
 fi
-
-[[ -s "$LICENSE_FILE" ]] \
-    || die "license.conf dari repository main kosong."
-
+[[ -s "$LICENSE_TMP" ]] || die "license.conf dari repository main kosong."
+# File lisensi yang diambil harus mendefinisikan ALLOWED_IPS sebagai array Bash.
+grep -Eq '^ALLOWED_IPS=\(' "$LICENSE_TMP" \
+    || die "Format license.conf tidak valid: ALLOWED_IPS array tidak ditemukan."
+cp -f "$LICENSE_TMP" "$LICENSE_FILE"
 source "$LICENSE_FILE"
 
-declare -p ALLOWED_IPS >/dev/null 2>&1 \
-    || die "Konfigurasi lisensi tidak valid: ALLOWED_IPS tidak ditemukan."
+declare -p ALLOWED_IPS 2>/dev/null | grep -q '^declare -a ALLOWED_IPS=' \
+    || die "Konfigurasi lisensi tidak valid: ALLOWED_IPS bukan array."
 
 PUBLIC_IP=$(curl -4fsS --max-time 10 https://api.ipify.org 2>/dev/null || true)
 
@@ -269,7 +276,7 @@ for f in /usr/local/bin/xray /usr/local/bin/dropbearws /usr/local/bin/stunnelws 
 [[ -f /etc/wireguard/wg0.conf ]] || die "WireGuard config tidak terpasang."
 
 systemctl daemon-reload
-services=(xray nginx haproxy ssh dropbear dropbear-ws stunnel-ws udpgw udp-custom wg-quick@wg0 zivpn)
+services=(xray nginx ssh dropbear dropbear-ws stunnel-ws udpgw udp-custom wg-quick@wg0 zivpn)
 for svc in "${services[@]}"; do
     systemctl enable "$svc" >/dev/null 2>&1 || die "Gagal enable service $svc"
     systemctl restart "$svc" >/dev/null 2>&1 || { systemctl status "$svc" --no-pager || true; die "Service $svc gagal start."; }
