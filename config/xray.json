@@ -265,6 +265,55 @@
         }
       },
       "tag": "trojan-tcp-tls"
+    },
+    {
+      "listen": "127.0.0.1",
+      "port": 14018,
+      "protocol": "vless",
+      "settings": {
+        "clients": [],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "httpupgrade",
+        "security": "none",
+        "httpupgradeSettings": {
+          "path": "/upvless"
+        }
+      },
+      "tag": "vless-httpupgrade"
+    },
+    {
+      "listen": "127.0.0.1",
+      "port": 14019,
+      "protocol": "vmess",
+      "settings": {
+        "clients": []
+      },
+      "streamSettings": {
+        "network": "httpupgrade",
+        "security": "none",
+        "httpupgradeSettings": {
+          "path": "/upvmess"
+        }
+      },
+      "tag": "vmess-httpupgrade"
+    },
+    {
+      "listen": "127.0.0.1",
+      "port": 14020,
+      "protocol": "trojan",
+      "settings": {
+        "clients": []
+      },
+      "streamSettings": {
+        "network": "httpupgrade",
+        "security": "none",
+        "httpupgradeSettings": {
+          "path": "/uptrojan"
+        }
+      },
+      "tag": "trojan-httpupgrade"
     }
   ],
   "outbounds": [
