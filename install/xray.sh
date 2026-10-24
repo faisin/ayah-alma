@@ -26,12 +26,9 @@ fi
 apt update -y
 
 apt install -y \
-curl wget cron jq unzip haproxy \
+curl wget cron jq unzip \
 gnupg coreutils lsof qrencode \
 ca-certificates
-
-# Validate HAProxy installation from Debian/Ubuntu package
-command -v haproxy >/dev/null 2>&1 || { echo -e "${RED}[ERROR] HAProxy package not available after install.${NC}"; exit 1; }
 
 mkdir -p /etc/xray
 mkdir -p /var/log/xray
@@ -87,13 +84,19 @@ systemctl restart cron
 
 if [ ! -f ~/.acme.sh/acme.sh ]; then
     echo -e "${GREEN}🔐 Menginstall acme.sh...${NC}"
-    curl https://get.acme.sh | sh -s email=admin@$domain
+    curl -fsSL --retry 3 --connect-timeout 15 https://get.acme.sh | sh -s email="admin@$domain" || {
+        echo -e "${RED}[ERROR] Gagal mengunduh/memasang acme.sh.${NC}"
+        exit 1
+    }
 fi
 
-chmod +x ~/.acme.sh/acme.sh
+[[ -s "$HOME/.acme.sh/acme.sh" ]] || { echo -e "${RED}[ERROR] Binary acme.sh tidak ditemukan.${NC}"; exit 1; }
+chmod +x "$HOME/.acme.sh/acme.sh"
 
-~/.acme.sh/acme.sh --set-default-ca --server letsencrypt
-~/.acme.sh/acme.sh --register-account -m admin@$domain || true
+"$HOME/.acme.sh/acme.sh" --set-default-ca --server letsencrypt
+if ! "$HOME/.acme.sh/acme.sh" --register-account -m "admin@$domain"; then
+    echo -e "${RED}[WARNING] Registrasi akun ACME gagal; lanjut hanya jika akun sudah terdaftar dan proses issue berhasil.${NC}"
+fi
 
 # ================= ACME WEBROOT =================
 
@@ -133,12 +136,11 @@ rm -f "/var/www/html/.well-known/acme-challenge/$ACME_TEST"
 
 mkdir -p /var/www/html/.well-known/acme-challenge
 
-~/.acme.sh/acme.sh \
+"$HOME/.acme.sh/acme.sh" \
     --issue \
     -d "$domain" \
     --webroot /var/www/html \
-    --keylength ec-256 \
-    --force || {
+    --keylength ec-256 || {
         echo -e "${RED}[ERROR] Failed to issue SSL certificate!${NC}"
         exit 1
 }
@@ -147,23 +149,35 @@ mkdir -p /var/www/html/.well-known/acme-challenge
 
 mkdir -p /etc/xray
 
-~/.acme.sh/acme.sh \
+"$HOME/.acme.sh/acme.sh" \
     --install-cert \
     -d "$domain" \
     --ecc \
     --key-file /etc/xray/private.key \
     --fullchain-file /etc/xray/cert.crt \
-    --reloadcmd "true" || {
+    --reloadcmd "systemctl reload nginx" || {
         echo -e "${RED}[ERROR] Failed to install certificate!${NC}"
         exit 1
 }
 
 # ================= PERMISSION =================
 
+[[ -s /etc/xray/private.key && -s /etc/xray/cert.crt ]] || {
+    echo -e "${RED}[ERROR] Sertifikat ACME atau private key tidak terpasang dengan benar.${NC}"
+    exit 1
+}
+openssl x509 -in /etc/xray/cert.crt -noout -checkend 0 >/dev/null 2>&1 || {
+    echo -e "${RED}[ERROR] Sertifikat ACME tidak valid atau sudah kedaluwarsa.${NC}"
+    exit 1
+}
 chmod 600 /etc/xray/private.key
 chmod 644 /etc/xray/cert.crt
 
 # ================= FINAL NGINX TLS CONFIG =================
+
+# Nginx will own public ports 80 and 443; release 443 before applying TLS config.
+systemctl disable --now haproxy 2>/dev/null || true
+
 
 # Bootstrap owns port 80 only during ACME. Remove it before final config.
 rm -f /etc/nginx/conf.d/acme-bootstrap.conf
@@ -182,40 +196,6 @@ sleep 2
 if ! systemctl is-active --quiet nginx; then
     echo -e "${RED}[ERROR] NGINX failed to start with final TLS configuration!${NC}"
     journalctl -u nginx -n 30 --no-pager
-    exit 1
-fi
-
-if ! ss -lnt | grep -qE '127\.0\.0\.1:8443|\[::1\]:8443'; then
-    echo "[ERROR] Nginx backend :8443 is not listening after final config."
-    ss -lntp | grep -E ':80|:8443' || true
-    exit 1
-fi
-
-# ================= 443 TLS MULTIPLEXER =================
-
-mkdir -p /etc/haproxy
-sed -e "s/vmess\.DOMAIN/${vmess_domain}/g" \
-    -e "s/vless\.DOMAIN/${vless_domain}/g" \
-    -e "s/trojan\.DOMAIN/${trojan_domain}/g" \
-    "$SCRIPT_DIR/config/haproxy.cfg" > /etc/haproxy/haproxy.cfg
-
-if [ ! -s /etc/haproxy/haproxy.cfg ]; then
-    echo "[ERROR] Failed to create HAProxy config"
-    exit 1
-fi
-
-haproxy -c -f /etc/haproxy/haproxy.cfg || {
-    echo "[ERROR] Invalid HAProxy config"
-    exit 1
-}
-
-systemctl enable haproxy
-systemctl restart haproxy
-sleep 2
-
-if ! systemctl is-active --quiet haproxy; then
-    echo -e "${RED}[ERROR] HAProxy failed to start!${NC}"
-    journalctl -u haproxy -n 30 --no-pager
     exit 1
 fi
 
@@ -262,10 +242,9 @@ xray -test -config /etc/xray/config.json || {
 systemctl daemon-reload
 systemctl daemon-reexec
 
-systemctl enable xray nginx haproxy
+systemctl enable xray nginx
 systemctl restart xray
 systemctl restart nginx
-systemctl restart haproxy
 
 sleep 2 
 
@@ -274,12 +253,6 @@ if ! systemctl is-active --quiet xray; then
     journalctl -u xray -n 20 --no-pager 
     exit 1 
 fi 
-
-if ! systemctl is-active --quiet haproxy; then
-    echo -e "${RED}[ERROR] HAProxy failed to start!${NC}"
-    journalctl -u haproxy -n 20 --no-pager
-    exit 1
-fi
 
 if ! systemctl is-active --quiet nginx; then 
     echo -e "${RED}[ERROR] NGINX failed to start!${NC}" 
