@@ -360,7 +360,7 @@ run_module(){
     (cd "$BASE_DIR" && bash "$BASE_DIR/$rel")
 }
 
-# Nginx bootstrap; sertifikat Cloudflare DNS-01 ditangani oleh xray.sh.
+# Nginx bootstrap; sertifikat HTTP-01 Webroot diterbitkan oleh xray.sh.
 rm -f /etc/nginx/conf.d/xray.conf /etc/nginx/conf.d/acme-bootstrap.conf
 
 run_module install/nginx.sh
