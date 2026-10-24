@@ -47,9 +47,9 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y ca-certificates curl wget jq tar gzip unzip git python3 python3-pip coreutils openssl iptables iptables-persistent netfilter-persistent vnstat screen golang-go file
 
-# Buka HTTP/HTTPS pada firewall host sebelum ACME Webroot.
+# Buka HTTP/HTTPS, SSH SSL-only, dan TCP TLS proxy pada firewall host.
 # Ini sengaja ditempatkan di depan rule REJECT yang mungkin sudah ada.
-for port in 80 443; do
+for port in 80 443 444 10011 10012 10013; do
     iptables -C INPUT -p tcp --dport "$port" -j ACCEPT 2>/dev/null \
         || iptables -I INPUT 1 -p tcp --dport "$port" -j ACCEPT
     if command -v ip6tables >/dev/null 2>&1; then
@@ -103,9 +103,12 @@ required=(
     "bin/$ARCH/zivpn"
     "bin/$ARCH/badvpn-udpgw"
     "bin/$ARCH/udp-custom"
-    config/nginx.conf
     config/xray.conf
     config/xray.json
+    config/xray-stream.conf
+    SSH-SSL-ONLY.txt
+    ssh/addssh.sh
+    ssh/trialssh.sh
     config/license.conf
     config/udp-custom
     config/udp-custom.json
@@ -129,6 +132,38 @@ unzip -tq "$ARCHIVE" >/dev/null || die "Release Ayah Alma rusak."
 unzip -q "$ARCHIVE" -d "$WORK_DIR/release"
 ZIP_DIR="$WORK_DIR/release/ayah-alma-main"
 [[ -d "$ZIP_DIR" ]] || die "Struktur release Ayah Alma tidak valid."
+
+# Fitur HTTP-01 Standalone + SSH SSL-only harus memakai modul yang sesuai.
+# File fitur ini sengaja di-overlay dari Release meskipun versi lama sudah ada di MAIN.
+# Jika setup.sh dijalankan dari ZIP hasil paket, file lokal menjadi prioritas terakhir.
+FEATURE_FILES=(
+    install/nginx.sh
+    install/xray.sh
+    install/ssh.sh
+    config/xray.conf
+    config/xray-stream.conf
+    ssh/addssh.sh
+    ssh/trialssh.sh
+    SSH-SSL-ONLY.txt
+)
+for rel in "${FEATURE_FILES[@]}"; do
+    if [[ -s "$ZIP_DIR/$rel" ]]; then
+        mkdir -p "$MAIN_DIR/$(dirname "$rel")"
+        cp -f "$ZIP_DIR/$rel" "$MAIN_DIR/$rel"
+        info "Memuat modul fitur dari Release: $rel"
+    fi
+done
+
+# Bila installer dijalankan langsung dari folder ZIP, gunakan file fitur lokal
+# sebagai sumber terakhir agar paket ini tetap lengkap walau Release belum diperbarui.
+PACKAGE_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+for rel in "${FEATURE_FILES[@]}"; do
+    if [[ -s "$PACKAGE_DIR/$rel" ]]; then
+        mkdir -p "$MAIN_DIR/$(dirname "$rel")"
+        cp -f "$PACKAGE_DIR/$rel" "$MAIN_DIR/$rel"
+        info "Memuat modul fitur dari paket lokal: $rel"
+    fi
+done
 
 missing=()
 for rel in "${required[@]}"; do
@@ -252,7 +287,7 @@ info "Domain: $domain"
 
 run_module(){ local rel="$1"; [[ -f "$BASE_DIR/$rel" ]] || die "Module tidak ditemukan: $rel"; info "Menjalankan $rel ..."; (cd "$BASE_DIR" && bash "$BASE_DIR/$rel"); }
 
-# Bootstrap Nginx dipakai sementara; validasi sertifikat menggunakan DNS-01 Cloudflare.
+# Bootstrap Nginx dipakai sementara; xray.sh menghentikannya saat validasi HTTP-01 Standalone.
 # xray.conf FINAL dipasang oleh xray.sh setelah sertifikat tersedia.
 rm -f /etc/nginx/conf.d/xray.conf /etc/nginx/conf.d/acme-bootstrap.conf
 
@@ -279,7 +314,7 @@ for f in /usr/local/bin/xray /usr/local/bin/dropbearws /usr/local/bin/stunnelws 
 [[ -f /etc/wireguard/wg0.conf ]] || die "WireGuard config tidak terpasang."
 
 systemctl daemon-reload
-services=(xray nginx ssh dropbear dropbear-ws stunnel-ws udpgw udp-custom wg-quick@wg0 zivpn)
+services=(xray nginx ssh dropbear dropbear-ws stunnel-ws ayah-ssh-ssl udpgw udp-custom wg-quick@wg0 zivpn)
 for svc in "${services[@]}"; do
     systemctl enable "$svc" >/dev/null 2>&1 || die "Gagal enable service $svc"
     systemctl restart "$svc" >/dev/null 2>&1 || { systemctl status "$svc" --no-pager || true; die "Service $svc gagal start."; }
