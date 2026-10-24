@@ -105,6 +105,7 @@ OpenSSH      : 22
 Dropbear     : 109, 143
 SSH WS       : 443 (/ssh-ws)
 SSH WSS      : 443 (/ssh-wss)
+SSH SSL-only : 444 (TLS tanpa WebSocket)
 UdpSSH       : 1-65535
 BadVPN       : 7300
 
@@ -122,6 +123,11 @@ Path: /ssh-ws
 SSH WSS
 $DOMAIN:443@$user:$pass
 Path: /ssh-wss
+
+SSH SSL-only (TLS, tanpa WebSocket)
+Host: $DOMAIN
+Port: 444
+Mode: SSL/TLS langsung, tanpa payload dan tanpa WebSocket
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PAYLOAD WEBSOCKET
