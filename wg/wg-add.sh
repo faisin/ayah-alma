@@ -112,7 +112,7 @@ sleep 1
 if ! systemctl is-active --quiet wg-quick@wg0; then
     echo "Error: WireGuard failed to restart properly! Cek konfigurasi PostUp/PostDown interface eth0."
     exit 1
-}
+fi
 
 # 12. Tampilkan informasi hasil ke layar
 echo -e "\n✅ Akun WireGuard '$user' berhasil dibuat!"
