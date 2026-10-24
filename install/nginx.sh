@@ -1,38 +1,58 @@
 #!/bin/bash
 set -Eeuo pipefail
 
-echo "[INFO] Menyiapkan Nginx untuk bootstrap sebelum sertifikat HTTP-01 Standalone..."
+echo "[INFO] Menyiapkan Nginx untuk bootstrap AYAH ALMA..."
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
 apt-get install -y nginx libnginx-mod-stream curl wget
 
-rm -f /etc/nginx/sites-enabled/default
-rm -f /etc/nginx/sites-available/default
-
-mkdir -p /etc/nginx/conf.d /etc/nginx/streams-enabled
+# Pastikan direktori konfigurasi tersedia.
+mkdir -p /etc/nginx/conf.d
+mkdir -p /etc/nginx/streams-enabled
 mkdir -p /var/www/html/.well-known/acme-challenge
+mkdir -p /etc/nginx/modules-enabled
 
+# Muat modul Stream jika tersedia sebagai modul dinamis Ubuntu.
+STREAM_MODULE="/usr/lib/nginx/modules/ngx_stream_module.so"
+STREAM_LOADED=false
 
+if nginx -V 2>&1 | grep -q -- '--with-stream'; then
+    echo "[INFO] Stream tersedia secara built-in."
+    STREAM_LOADED=true
+elif [[ -f "$STREAM_MODULE" ]]; then
+    if ! grep -RqsE '^[[:space:]]*load_module[[:space:]]+.*ngx_stream_module\.so' \
+        /etc/nginx/nginx.conf /etc/nginx/modules-enabled 2>/dev/null; then
+        printf 'load_module %s;\n' "$STREAM_MODULE" \
+            > /etc/nginx/modules-enabled/50-mod-stream.conf
+    fi
+    STREAM_LOADED=true
+else
+    echo "[ERROR] Modul Nginx Stream tidak ditemukan: $STREAM_MODULE"
+    exit 1
+fi
+
+# Gunakan konfigurasi repository bila tersedia.
 if [[ -f "./config/nginx.conf" ]]; then
     cp -f "./config/nginx.conf" /etc/nginx/nginx.conf
 elif [[ -f "/root/ayah-alma/config/nginx.conf" ]]; then
     cp -f "/root/ayah-alma/config/nginx.conf" /etc/nginx/nginx.conf
 else
-    echo "[WARNING] config/nginx.conf not found; keeping package nginx.conf"
+    echo "[INFO] Mempertahankan konfigurasi nginx.conf yang tersedia."
 fi
 
-# Enable the Nginx stream context for raw TCP/TLS passthrough routes.
+# Pastikan stream context disediakan sebelum blok http.
 if ! grep -Eq '^[[:space:]]*stream[[:space:]]*\{' /etc/nginx/nginx.conf; then
     if grep -Eq '^[[:space:]]*http[[:space:]]*\{' /etc/nginx/nginx.conf; then
-        sed -i '/^[[:space:]]*http[[:space:]]*{/i stream {\n    include /etc/nginx/streams-enabled/*.conf;\n}\n' /etc/nginx/nginx.conf
+        sed -i '/^[[:space:]]*http[[:space:]]*{/i stream {\n    include /etc/nginx/streams-enabled/*.conf;\n}\n' \
+            /etc/nginx/nginx.conf
     else
-        echo "[ERROR] Tidak menemukan blok http {} pada /etc/nginx/nginx.conf."
+        echo "[ERROR] Tidak menemukan blok http {} pada nginx.conf."
         exit 1
     fi
 fi
 
-# Jangan memuat konfigurasi TLS final sebelum sertifikat tersedia.
+# Hindari konfigurasi TLS Xray sebelum sertifikat siap.
 rm -f /etc/nginx/conf.d/xray.conf
 
 cat > /etc/nginx/conf.d/acme-bootstrap.conf <<'EOF'
@@ -59,15 +79,21 @@ chmod 755 /var/www/html
 chmod 755 /var/www/html/.well-known
 chmod 755 /var/www/html/.well-known/acme-challenge
 
-nginx -t
+# Uji konfigurasi terlebih dahulu agar error tidak tersembunyi.
+echo "[INFO] Menguji konfigurasi Nginx..."
+if ! nginx -t; then
+    echo "[ERROR] Konfigurasi Nginx tidak valid. Nginx tidak direstart."
+    exit 1
+fi
+
 systemctl enable nginx
 systemctl restart nginx
 sleep 2
 
 if ! systemctl is-active --quiet nginx; then
-    echo "[ERROR] Nginx bootstrap failed."
+    echo "[ERROR] Nginx bootstrap gagal aktif."
     systemctl status nginx --no-pager || true
     exit 1
 fi
 
-echo "[INFO] Nginx bootstrap siap. Nginx akan dihentikan sementara oleh install/xray.sh saat validasi HTTP-01 Standalone."
+echo "[INFO] Nginx bootstrap berhasil aktif."
