@@ -131,7 +131,6 @@ required=(
     config/xray.conf
     config/xray.json
     config/xray-stream.conf
-    SSH-SSL-ONLY.txt
     ssh/addssh.sh
     ssh/trialssh.sh
     config/license.conf
@@ -360,7 +359,7 @@ run_module(){
     (cd "$BASE_DIR" && bash "$BASE_DIR/$rel")
 }
 
-# Nginx bootstrap; sertifikat HTTP-01 Webroot diterbitkan oleh xray.sh.
+# Nginx bootstrap; sertifikat HTTP-01 Standalone ditangani oleh xray.sh.
 rm -f /etc/nginx/conf.d/xray.conf /etc/nginx/conf.d/acme-bootstrap.conf
 
 run_module install/nginx.sh
