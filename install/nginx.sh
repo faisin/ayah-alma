@@ -8,6 +8,7 @@ apt-get update -y
 apt-get install -y nginx libnginx-mod-stream curl wget
 
 mkdir -p /etc/nginx/conf.d
+rm -f /etc/nginx/sites-enabled/default
 mkdir -p /etc/nginx/streams-enabled
 mkdir -p /etc/nginx/modules-enabled
 mkdir -p /var/www/html/.well-known/acme-challenge
@@ -23,36 +24,33 @@ NGINX_CONF="/etc/nginx/nginx.conf"
 STREAM_MODULE="/usr/lib/nginx/modules/ngx_stream_module.so"
 STREAM_MODULE_CONF="/etc/nginx/modules-enabled/50-mod-stream.conf"
 
-# Pastikan file modul Stream tersedia.
+# Pastikan modul Stream tersedia.
 if [[ ! -f "$STREAM_MODULE" ]]; then
     echo "[ERROR] Modul Stream tidak ditemukan: $STREAM_MODULE"
     exit 1
 fi
 
-# Pastikan modul dimuat oleh konfigurasi Nginx yang aktif.
-if grep -Eq '^[[:space:]]*load_module[[:space:]].*ngx_stream_module\.so[[:space:]]*;' "$NGINX_CONF"; then
-    echo "[INFO] Direktif load_module Stream sudah ada di nginx.conf."
-
-elif grep -Fq '/etc/nginx/modules-enabled/*.conf' "$NGINX_CONF"; then
-    echo "[INFO] nginx.conf menyertakan modules-enabled."
-
-    if ! grep -RqsE '^[[:space:]]*load_module[[:space:]].*ngx_stream_module\.so[[:space:]]*;' /etc/nginx/modules-enabled 2>/dev/null; then
-        printf 'load_module %s;\n' "$STREAM_MODULE" > "$STREAM_MODULE_CONF"
+# Pastikan modul dimuat, termasuk bila repository memakai nginx.conf khusus.
+if ! grep -Eq '^[[:space:]]*load_module[[:space:]].*ngx_stream_module\.so[[:space:]]*;' "$NGINX_CONF"; then
+    if grep -Eq '^[[:space:]]*include[[:space:]]+/etc/nginx/modules-enabled/\*\.conf[[:space:]]*;' "$NGINX_CONF"; then
+        if ! grep -RqsE '^[[:space:]]*load_module[[:space:]].*ngx_stream_module\.so[[:space:]]*;' /etc/nginx/modules-enabled --include='*.conf' 2>/dev/null; then
+            printf 'load_module %s;\n' "$STREAM_MODULE" > "$STREAM_MODULE_CONF"
+        fi
+    else
+        sed -i "1i load_module $STREAM_MODULE;" "$NGINX_CONF"
     fi
-
-else
-    echo "[INFO] Menambahkan pemuatan modul Stream ke nginx.conf."
-    sed -i "1i load_module $STREAM_MODULE;" "$NGINX_CONF"
 fi
 
-# Pastikan blok stream tersedia.
+# Pastikan blok stream tersedia dan memuat file rute TCP.
 if ! grep -Eq '^[[:space:]]*stream[[:space:]]*\{' "$NGINX_CONF"; then
     if grep -Eq '^[[:space:]]*http[[:space:]]*\{' "$NGINX_CONF"; then
         sed -i '/^[[:space:]]*http[[:space:]]*{/i stream {\n    include /etc/nginx/streams-enabled/*.conf;\n}\n' "$NGINX_CONF"
     else
-        echo "[ERROR] Tidak menemukan blok http {} di $NGINX_CONF."
+        echo "[ERROR] Tidak menemukan blok http {} pada $NGINX_CONF."
         exit 1
     fi
+elif ! grep -Eq '^[[:space:]]*include[[:space:]]+/etc/nginx/streams-enabled/\*\.conf[[:space:]]*;' "$NGINX_CONF"; then
+    sed -i '/^[[:space:]]*stream[[:space:]]*{/a\    include /etc/nginx/streams-enabled/*.conf;' "$NGINX_CONF"
 fi
 
 # Jangan memuat konfigurasi TLS final sebelum sertifikat tersedia.

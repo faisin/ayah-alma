@@ -100,41 +100,59 @@ systemctl enable cron || exit 1
 systemctl restart cron || exit 1
 
 # ================= ACME CERTIFICATE =================
-# Gunakan HTTP-01 Webroot dan
-# tidak menerbitkan wildcard; sertifikat hanya untuk domain layanan.
+# Sertifikat HTTP-01 Standalone untuk domain layanan yang dipilih.
+# Metode ini tidak menerbitkan sertifikat wildcard.
 CERT_DOMAIN="$domain"
-ACME_MODE="http01_webroot"
 
-printf '\n\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n'
-printf '\033[1;36m   PENGATURAN SERTIFIKAT LET\x27S ENCRYPT\033[0m\n'
-printf '\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m\n'
+printf '\n\\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\033[0m\n'
+printf '\\033[1;36m   PENGATURAN SERTIFIKAT LET\\x27S ENCRYPT\\033[0m\n'
+printf '\\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\033[0m\n'
 echo "Domain layanan    : $domain"
 echo "Domain sertifikat : $CERT_DOMAIN"
-echo "Metode            : HTTP-01 Webroot (port 80)"
-echo "Direktori challenge: /var/www/html/.well-known/acme-challenge"
-
-mkdir -p /var/www/html/.well-known/acme-challenge
-chmod 755 /var/www/html /var/www/html/.well-known /var/www/html/.well-known/acme-challenge
+echo "Metode            : HTTP-01 Standalone (port 80)"
+echo "Catatan           : DNS domain harus mengarah ke VPS dan TCP port 80 harus terbuka."
 
 echo -e "${GREEN}🔐 Memastikan acme.sh tersedia...${NC}"
 if [[ ! -s "$HOME/.acme.sh/acme.sh" ]]; then
     curl -fsSL --retry 3 --connect-timeout 15 https://get.acme.sh | sh -s email="admin@$CERT_DOMAIN" || {
-        echo -e "${RED}[ERROR] Gagal memasang acme.sh.${NC}"; exit 1;
+        echo -e "${RED}[ERROR] Gagal memasang acme.sh.${NC}"
+        exit 1
     }
 fi
 ACME="$HOME/.acme.sh/acme.sh"
 [[ -s "$ACME" ]] || { echo -e "${RED}[ERROR] Binary acme.sh tidak ditemukan.${NC}"; exit 1; }
 chmod +x "$ACME"
-"$ACME" --set-default-ca --server letsencrypt || { echo -e "${RED}[ERROR] Gagal memilih Let's Encrypt.${NC}"; exit 1; }
+"$ACME" --set-default-ca --server letsencrypt || {
+    echo -e "${RED}[ERROR] Gagal memilih Let's Encrypt.${NC}"
+    exit 1
+}
 if ! "$ACME" --register-account -m "admin@$CERT_DOMAIN"; then
     echo -e "${YELLOW}[PERINGATAN] Akun ACME mungkin sudah terdaftar; melanjutkan.${NC}"
 fi
 
-echo -e "${GREEN}Menerbitkan sertifikat HTTP-01 melalui Webroot...${NC}"
-"$ACME" --issue --webroot /var/www/html -d "$CERT_DOMAIN" --keylength ec-256 || {
-    echo -e "${RED}[ERROR] Gagal menerbitkan sertifikat HTTP-01. Pastikan DNS mengarah ke VPS, port 80 terbuka, dan Nginx melayani /.well-known/acme-challenge/.${NC}"
+echo -e "${YELLOW}[INFO] Menghentikan Nginx sementara untuk validasi HTTP-01 port 80...${NC}"
+systemctl stop nginx || {
+    echo -e "${RED}[ERROR] Gagal menghentikan Nginx.${NC}"
     exit 1
 }
+restore_nginx() { systemctl start nginx || true; }
+trap restore_nginx EXIT
+
+if lsof -nP -iTCP:80 -sTCP:LISTEN 2>/dev/null | grep -q LISTEN; then
+    echo -e "${RED}[ERROR] Port 80 masih digunakan proses lain setelah Nginx dihentikan.${NC}"
+    exit 1
+fi
+
+"$ACME" --issue --standalone -d "$CERT_DOMAIN" --keylength ec-256 || {
+    echo -e "${RED}[ERROR] Gagal menerbitkan sertifikat HTTP-01 Standalone. Pastikan DNS domain mengarah ke VPS dan TCP port 80 terbuka.${NC}"
+    exit 1
+}
+
+systemctl start nginx || {
+    echo -e "${RED}[ERROR] Sertifikat terbit, tetapi Nginx gagal aktif kembali.${NC}"
+    exit 1
+}
+trap - EXIT
 
 # ================= INSTALL CERTIFICATE =================
 
@@ -174,14 +192,35 @@ chmod 644 /etc/xray/cert.crt
 
 rm -f /etc/nginx/conf.d/acme-bootstrap.conf
 
-# Ensure stream context exists for raw TCP/TLS passthrough listeners.
-if ! grep -Eq '^[[:space:]]*stream[[:space:]]*\{' /etc/nginx/nginx.conf; then
-    if grep -Eq '^[[:space:]]*http[[:space:]]*\{' /etc/nginx/nginx.conf; then
-        sed -i '/^[[:space:]]*http[[:space:]]*{/i stream {\n    include /etc/nginx/streams-enabled/*.conf;\n}\n' /etc/nginx/nginx.conf
+# Pastikan modul Nginx Stream dimuat sebelum blok stream {} diproses.
+NGINX_CONF="/etc/nginx/nginx.conf"
+STREAM_MODULE="/usr/lib/nginx/modules/ngx_stream_module.so"
+STREAM_MODULE_CONF="/etc/nginx/modules-enabled/50-mod-stream.conf"
+mkdir -p /etc/nginx/modules-enabled /etc/nginx/streams-enabled
+if [[ ! -f "$STREAM_MODULE" ]]; then
+    echo -e "${RED}[ERROR] Modul Nginx Stream tidak ditemukan: $STREAM_MODULE${NC}"
+    exit 1
+fi
+if ! grep -Eq '^[[:space:]]*load_module[[:space:]].*ngx_stream_module\.so[[:space:]]*;' "$NGINX_CONF"; then
+    if grep -Eq '^[[:space:]]*include[[:space:]]+/etc/nginx/modules-enabled/\*\.conf[[:space:]]*;' "$NGINX_CONF"; then
+        if ! grep -RqsE '^[[:space:]]*load_module[[:space:]].*ngx_stream_module\.so[[:space:]]*;' /etc/nginx/modules-enabled --include='*.conf' 2>/dev/null; then
+            printf 'load_module %s;\n' "$STREAM_MODULE" > "$STREAM_MODULE_CONF"
+        fi
+    else
+        sed -i "1i load_module $STREAM_MODULE;" "$NGINX_CONF"
+    fi
+fi
+
+# Pastikan konfigurasi stream memuat semua rute TCP passthrough.
+if ! grep -Eq '^[[:space:]]*stream[[:space:]]*\{' "$NGINX_CONF"; then
+    if grep -Eq '^[[:space:]]*http[[:space:]]*\{' "$NGINX_CONF"; then
+        sed -i '/^[[:space:]]*http[[:space:]]*{/i stream {\n    include /etc/nginx/streams-enabled/*.conf;\n}\n' "$NGINX_CONF"
     else
         echo -e "${RED}[ERROR] Tidak menemukan blok http {} di /etc/nginx/nginx.conf.${NC}"
         exit 1
     fi
+elif ! grep -Eq '^[[:space:]]*include[[:space:]]+/etc/nginx/streams-enabled/\*\.conf[[:space:]]*;' "$NGINX_CONF"; then
+    sed -i '/^[[:space:]]*stream[[:space:]]*{/a\    include /etc/nginx/streams-enabled/*.conf;' "$NGINX_CONF"
 fi
 
 cp "$SCRIPT_DIR/config/xray-stream.conf" /etc/nginx/streams-enabled/xray-stream.conf
@@ -339,7 +378,7 @@ XRAY PANEL (AYAH-ALMA)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Domain layanan       : ${domain}
 Sertifikat           : ${CERT_DOMAIN}
-Sertifikat metode    : Let's Encrypt HTTP-01 Webroot
+Sertifikat metode    : Let's Encrypt HTTP-01 Standalone
 
 WebSocket:
 VMess WS TLS         : 443 /vmess -> 127.0.0.1:23456
