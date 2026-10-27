@@ -67,7 +67,7 @@ chmod 644 /etc/issue.net
 
 # ================= SSH SSL-ONLY (TLS TANPA WEBSOCKET) =================
 # TLS diterminasi oleh stunnel pada loopback, lalu diteruskan ke OpenSSH.
-# Port publik 444 diteruskan oleh Nginx Stream ke 127.0.0.1:2222.
+# Port publik 444 diteruskan oleh HAProxy TCP ke 127.0.0.1:2222.
 if [[ ! -s /etc/xray/cert.crt || ! -s /etc/xray/private.key ]]; then
     echo -e "${RED}[ERROR] Sertifikat Let's Encrypt belum tersedia; SSH SSL-only tidak dapat disiapkan.${NC}"
     exit 1
@@ -109,7 +109,7 @@ Description=Dropbear SSH Server
 After=network.target
 
 [Service]
-ExecStart=/usr/sbin/dropbear -E -F -p 109 -p 143 -W 65536 -b /etc/issue.net
+ExecStart=/usr/sbin/dropbear -E -F -p 127.0.0.1:109 -p 127.0.0.1:143 -W 65536 -b /etc/issue.net
 Restart=always
 
 [Install]
@@ -171,7 +171,23 @@ install -m 755 "$UDP_BIN" /usr/local/bin/udp-custom
 
 mkdir -p /etc/udp-custom
 [ -f "$SCRIPT_DIR/config/udp-custom.json" ] || { echo -e "${RED}[ERROR] config/udp-custom.json tidak ditemukan.${NC}"; exit 1; }
-cp "$SCRIPT_DIR/config/udp-custom.json" /etc/udp-custom/config.json
+
+# Preserve a valid existing configuration; otherwise create a unique first-install password.
+if [ -s /etc/udp-custom/config.json ] && jq -e '.auth.config | type == "array" and length > 0' /etc/udp-custom/config.json >/dev/null 2>&1; then
+    echo -e "${GREEN}[INFO] Konfigurasi/password UDP Custom yang sudah ada dipertahankan.${NC}"
+else
+    initial_udp_password="$(openssl rand -hex 12)"
+    jq --arg password "$initial_udp_password" '.auth.config = [$password]' \
+        "$SCRIPT_DIR/config/udp-custom.json" > /etc/udp-custom/config.json
+    chmod 600 /etc/udp-custom/config.json
+    printf '%s\n' "$initial_udp_password" > /root/udp-custom-initial-password.txt
+    chmod 600 /root/udp-custom-initial-password.txt
+    if [[ -w /dev/tty ]]; then
+        printf '[PENTING] Password UDP Custom awal: %s\nSimpan password ini. Salinan root-only: /root/udp-custom-initial-password.txt\n' "$initial_udp_password" > /dev/tty
+    else
+        echo -e "${YELLOW}[PENTING] Password UDP Custom disimpan di /root/udp-custom-initial-password.txt (izin 600).${NC}"
+    fi
+fi
 
 [ -f "$SCRIPT_DIR/sshws/udp-custom.service" ] || { echo -e "${RED}[ERROR] udp-custom.service tidak ditemukan.${NC}"; exit 1; }
 cp "$SCRIPT_DIR/sshws/udp-custom.service" /etc/systemd/system/

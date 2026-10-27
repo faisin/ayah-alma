@@ -1,5 +1,5 @@
 #!/bin/bash
-# Setup Xray Core + Nginx Reverse Proxy - by Ayah-Alma
+# Setup Xray Core + HAProxy Reverse Proxy - by Ayah-Alma
 # Converted for Ayah-Alma Project
 
 GREEN='\033[0;32m'
@@ -16,9 +16,9 @@ sleep 1
 
 # ================= VALIDATION =================
 
-if ! command -v nginx >/dev/null 2>&1; then
-    echo -e "${RED}[ERROR] NGINX not installed!${NC}"
-    echo -e "${RED}Run install/nginx.sh first${NC}"
+if ! command -v haproxy >/dev/null 2>&1; then
+    echo -e "${RED}[ERROR] HAProxy belum terpasang!${NC}"
+    echo -e "${RED}Jalankan install/haproxy.sh terlebih dahulu.${NC}"
     exit 1
 fi
 
@@ -29,9 +29,9 @@ apt update -y || exit 1
 apt install -y \
     curl wget cron jq unzip \
     gnupg coreutils lsof qrencode \
-    ca-certificates openssl file libnginx-mod-stream || exit 1
+    ca-certificates openssl file haproxy || exit 1
 
-mkdir -p /etc/xray /var/log/xray /usr/local/bin /etc/nginx/streams-enabled
+mkdir -p /etc/xray /var/log/xray /usr/local/bin /etc/haproxy/certs
 
 # ================= INSTALL VENDORED XRAY =================
 
@@ -130,29 +130,33 @@ if ! "$ACME" --register-account -m "admin@$CERT_DOMAIN"; then
     echo -e "${YELLOW}[PERINGATAN] Akun ACME mungkin sudah terdaftar; melanjutkan.${NC}"
 fi
 
-echo -e "${YELLOW}[INFO] Menghentikan Nginx sementara untuk validasi HTTP-01 port 80...${NC}"
-systemctl stop nginx || {
-    echo -e "${RED}[ERROR] Gagal menghentikan Nginx.${NC}"
-    exit 1
+echo -e "${YELLOW}[INFO] Menghentikan HAProxy sementara untuk validasi HTTP-01 port 80...${NC}"
+HAPROXY_WAS_ACTIVE="$(systemctl is-active haproxy 2>/dev/null || true)"
+HAPROXY_TEMP_STOPPED=true
+restore_haproxy() {
+    [[ "${HAPROXY_TEMP_STOPPED:-false}" == "true" ]] || return 0
+    if [[ "${HAPROXY_WAS_ACTIVE:-inactive}" == "active" ]]; then
+        systemctl start haproxy >/dev/null 2>&1 || echo "[WARNING] HAProxy gagal dipulihkan otomatis; periksa systemctl status haproxy." >&2
+    else
+        systemctl stop haproxy >/dev/null 2>&1 || true
+    fi
 }
-restore_nginx() { systemctl start nginx || true; }
-trap restore_nginx EXIT
+trap restore_haproxy EXIT
 
 if lsof -nP -iTCP:80 -sTCP:LISTEN 2>/dev/null | grep -q LISTEN; then
-    echo -e "${RED}[ERROR] Port 80 masih digunakan proses lain setelah Nginx dihentikan.${NC}"
+    echo -e "${RED}[ERROR] Port 80 masih digunakan proses lain setelah HAProxy dihentikan.${NC}"
     exit 1
 fi
 
-"$ACME" --issue --standalone -d "$CERT_DOMAIN" --keylength ec-256 || {
+"$ACME" --issue --standalone -d "$CERT_DOMAIN" --keylength ec-256 \
+    --pre-hook "systemctl stop haproxy" \
+    --post-hook 'if grep -q "^frontend ayah_http_80" /etc/haproxy/haproxy.cfg 2>/dev/null; then systemctl start haproxy; fi' || {
     echo -e "${RED}[ERROR] Gagal menerbitkan sertifikat HTTP-01 Standalone. Pastikan DNS domain mengarah ke VPS dan TCP port 80 terbuka.${NC}"
     exit 1
 }
 
-systemctl start nginx || {
-    echo -e "${RED}[ERROR] Sertifikat terbit, tetapi Nginx gagal aktif kembali.${NC}"
-    exit 1
-}
-trap - EXIT
+systemctl stop haproxy >/dev/null 2>&1 || true
+# Trap tetap aktif sampai konfigurasi final berhasil dan HAProxy kembali sehat.
 
 # ================= INSTALL CERTIFICATE =================
 
@@ -164,7 +168,7 @@ mkdir -p /etc/xray
     --ecc \
     --key-file /etc/xray/private.key \
     --fullchain-file /etc/xray/cert.crt \
-    --reloadcmd 'if systemctl is-active --quiet nginx; then systemctl reload nginx; fi; if systemctl is-active --quiet xray; then systemctl restart xray; fi; if systemctl is-active --quiet ayah-ssh-ssl; then systemctl restart ayah-ssh-ssl; fi' || {
+    --reloadcmd 'cat /etc/xray/cert.crt /etc/xray/private.key > /etc/haproxy/certs/ayah-alma.pem && chmod 600 /etc/haproxy/certs/ayah-alma.pem && if grep -q "^frontend ayah_http_80" /etc/haproxy/haproxy.cfg 2>/dev/null; then haproxy -c -f /etc/haproxy/haproxy.cfg && systemctl reload haproxy || systemctl restart haproxy; fi; if systemctl is-active --quiet xray; then systemctl restart xray; fi; if systemctl is-active --quiet ayah-ssh-ssl; then systemctl restart ayah-ssh-ssl; fi' || {
         echo -e "${RED}[ERROR] Gagal memasang sertifikat.${NC}"
         exit 1
     }
@@ -186,66 +190,37 @@ openssl x509 \
 chmod 600 /etc/xray/private.key
 chmod 644 /etc/xray/cert.crt
 
-# ================= FINAL NGINX TLS CONFIG =================
-# Nginx digunakan langsung.
-# Tidak menonaktifkan HAProxy atau layanan lain.
+# ================= FINAL HAPROXY CONFIG =================
+# HAProxy owns public ports 80 and 443; Nginx is not used for tunneling.
+cat /etc/xray/cert.crt /etc/xray/private.key > /etc/haproxy/certs/ayah-alma.pem
+chmod 600 /etc/haproxy/certs/ayah-alma.pem
 
-rm -f /etc/nginx/conf.d/acme-bootstrap.conf
-
-# Pastikan modul Nginx Stream dimuat sebelum blok stream {} diproses.
-NGINX_CONF="/etc/nginx/nginx.conf"
-STREAM_MODULE="/usr/lib/nginx/modules/ngx_stream_module.so"
-STREAM_MODULE_CONF="/etc/nginx/modules-enabled/50-mod-stream.conf"
-mkdir -p /etc/nginx/modules-enabled /etc/nginx/streams-enabled
-if [[ ! -f "$STREAM_MODULE" ]]; then
-    echo -e "${RED}[ERROR] Modul Nginx Stream tidak ditemukan: $STREAM_MODULE${NC}"
-    exit 1
+HAPROXY_TEMPLATE="$SCRIPT_DIR/config/haproxy.cfg"
+[[ -s "$HAPROXY_TEMPLATE" ]] || { echo -e "${RED}[ERROR] Template config/haproxy.cfg tidak ditemukan.${NC}"; exit 1; }
+HAPROXY_RENDERED="$(mktemp /tmp/ayah-alma-haproxy.XXXXXX)"
+cp "$HAPROXY_TEMPLATE" "$HAPROXY_RENDERED"
+IPV6_DISABLED="$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6 2>/dev/null || echo 1)"
+if [[ "$IPV6_DISABLED" != "0" ]]; then
+    sed -i '/^[[:space:]]*bind :::[0-9]/d' "$HAPROXY_RENDERED"
+    echo -e "${YELLOW}[WARNING] IPv6 dinonaktifkan; listener IPv6 HAProxy dilewati.${NC}"
 fi
-if ! grep -Eq '^[[:space:]]*load_module[[:space:]].*ngx_stream_module\.so[[:space:]]*;' "$NGINX_CONF"; then
-    if grep -Eq '^[[:space:]]*include[[:space:]]+/etc/nginx/modules-enabled/\*\.conf[[:space:]]*;' "$NGINX_CONF"; then
-        if ! grep -RqsE '^[[:space:]]*load_module[[:space:]].*ngx_stream_module\.so[[:space:]]*;' /etc/nginx/modules-enabled --include='*.conf' 2>/dev/null; then
-            printf 'load_module %s;\n' "$STREAM_MODULE" > "$STREAM_MODULE_CONF"
-        fi
-    else
-        sed -i "1i load_module $STREAM_MODULE;" "$NGINX_CONF"
-    fi
-fi
+install -m 644 "$HAPROXY_RENDERED" /etc/haproxy/haproxy.cfg
+rm -f "$HAPROXY_RENDERED"
 
-# Pastikan konfigurasi stream memuat semua rute TCP passthrough.
-if ! grep -Eq '^[[:space:]]*stream[[:space:]]*\{' "$NGINX_CONF"; then
-    if grep -Eq '^[[:space:]]*http[[:space:]]*\{' "$NGINX_CONF"; then
-        sed -i '/^[[:space:]]*http[[:space:]]*{/i stream {\n    include /etc/nginx/streams-enabled/*.conf;\n}\n' "$NGINX_CONF"
-    else
-        echo -e "${RED}[ERROR] Tidak menemukan blok http {} di /etc/nginx/nginx.conf.${NC}"
-        exit 1
-    fi
-elif ! grep -Eq '^[[:space:]]*include[[:space:]]+/etc/nginx/streams-enabled/\*\.conf[[:space:]]*;' "$NGINX_CONF"; then
-    sed -i '/^[[:space:]]*stream[[:space:]]*{/a\    include /etc/nginx/streams-enabled/*.conf;' "$NGINX_CONF"
-fi
-
-cp "$SCRIPT_DIR/config/xray-stream.conf" /etc/nginx/streams-enabled/xray-stream.conf
-chmod 644 /etc/nginx/streams-enabled/xray-stream.conf
-cp "$SCRIPT_DIR/config/xray.conf" /etc/nginx/conf.d/xray.conf
-chmod 644 /etc/nginx/conf.d/xray.conf
-
-echo -e "${GREEN}🧪 Testing final NGINX TLS configuration...${NC}"
-
-nginx -t || {
-    echo -e "${RED}[ERROR] Invalid final NGINX configuration!${NC}"
+haproxy -c -f /etc/haproxy/haproxy.cfg || {
+    echo -e "${RED}[ERROR] Konfigurasi HAProxy tidak valid.${NC}"
     exit 1
 }
 
-systemctl restart nginx
-sleep 2
-
-if ! systemctl is-active --quiet nginx; then
-    echo -e "${RED}[ERROR] NGINX failed to start!${NC}"
-    journalctl -u nginx -n 30 --no-pager
-    exit 1
-fi
-
 # ================= XRAY CONFIG =================
 
+# Simpan konfigurasi lama sebelum menulis template baru agar akun/pengaturan
+# sebelumnya masih dapat dipulihkan bila installer dijalankan ulang.
+if [[ -s /etc/xray/config.json ]]; then
+    backup="/etc/xray/config.json.bak.$(date +%Y%m%d%H%M%S)"
+    cp -a /etc/xray/config.json "$backup"
+    echo "[INFO] Konfigurasi Xray sebelumnya dicadangkan ke $backup"
+fi
 cp "$SCRIPT_DIR/config/xray.json" /etc/xray/config.json
 chmod 644 /etc/xray/config.json
 
@@ -270,48 +245,7 @@ for tag in vmess-httpupgrade vless-httpupgrade trojan-httpupgrade; do
     fi
 done
 
-# Pastikan rute HTTPUpgrade tersedia pada server HTTP port 80 tanpa mengubah rute WS.
-python3 - /etc/nginx/conf.d/xray.conf <<'PYROUTES'
-from pathlib import Path
-import sys
-p = Path(sys.argv[1])
-s = p.read_text()
-blocks = {
-    "/upvmess": '    # HTTPUpgrade VMess\n    location /upvmess { proxy_redirect off; proxy_pass http://127.0.0.1:14019; proxy_http_version 1.1; proxy_set_header Host $host; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header X-Real-IP $remote_addr; proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; proxy_read_timeout 3600; proxy_send_timeout 3600; }\n',
-    "/upvless": '    # HTTPUpgrade VLESS\n    location /upvless { proxy_redirect off; proxy_pass http://127.0.0.1:14018; proxy_http_version 1.1; proxy_set_header Host $host; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header X-Real-IP $remote_addr; proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; proxy_read_timeout 3600; proxy_send_timeout 3600; }\n',
-    "/uptrojan": '    # HTTPUpgrade Trojan\n    location /uptrojan { proxy_redirect off; proxy_pass http://127.0.0.1:14020; proxy_http_version 1.1; proxy_set_header Host $host; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header X-Real-IP $remote_addr; proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; proxy_read_timeout 3600; proxy_send_timeout 3600; }\n',
-}
-# Find every server {} block (HTTP :80 and HTTPS :443), and add missing routes to each.
-pos = 0
-out = []
-while True:
-    start = s.find('server {', pos)
-    if start < 0:
-        out.append(s[pos:])
-        break
-    out.append(s[pos:start])
-    depth = 0
-    end = None
-    for i in range(start + len('server '), len(s)):
-        if s[i] == '{': depth += 1
-        elif s[i] == '}':
-            depth -= 1
-            if depth == 0:
-                end = i
-                break
-    if end is None:
-        raise SystemExit('Server block Nginx tidak seimbang')
-    block = s[start:end]
-    add = ''.join(route for path, route in blocks.items() if f'location {path}' not in block)
-    out.append(block + add + '}')
-    pos = end + 1
-updated = ''.join(out)
-if updated == s:
-    print('[INFO] Rute HTTPUpgrade Nginx sudah lengkap.')
-else:
-    p.write_text(updated)
-    print('[INFO] Rute HTTPUpgrade ditambahkan ke server block Nginx yang belum memilikinya.')
-PYROUTES
+# Rute HTTPUpgrade /upvmess, /upvless, dan /uptrojan sudah tersedia di config/haproxy.cfg.
 
 # ================= XRAY SERVICE =================
 
@@ -333,10 +267,10 @@ EOF
 
 # ================= TEST CONFIG =================
 
-echo -e "${GREEN}🧪 Testing NGINX Config...${NC}"
+echo -e "${GREEN}🧪 Testing HAProxy Config...${NC}"
 
-nginx -t || {
-    echo -e "${RED}[ERROR] Invalid NGINX configuration!${NC}"
+haproxy -c -f /etc/haproxy/haproxy.cfg || {
+    echo -e "${RED}[ERROR] Invalid HAProxy configuration!${NC}"
     exit 1
 }
 
@@ -350,10 +284,10 @@ echo -e "${GREEN}🧪 Testing XRAY Config...${NC}"
 # ================= START SERVICE =================
 
 systemctl daemon-reload || exit 1
-systemctl enable xray nginx || exit 1
+systemctl enable xray haproxy || exit 1
 
 systemctl restart xray
-systemctl restart nginx
+systemctl restart haproxy
 
 sleep 2
 
@@ -363,11 +297,15 @@ if ! systemctl is-active --quiet xray; then
     exit 1
 fi
 
-if ! systemctl is-active --quiet nginx; then
-    echo -e "${RED}[ERROR] NGINX failed to start!${NC}"
-    journalctl -u nginx -n 20 --no-pager
+if ! systemctl is-active --quiet haproxy; then
+    echo -e "${RED}[ERROR] HAProxy failed to start!${NC}"
+    journalctl -u haproxy -n 20 --no-pager
     exit 1
 fi
+
+# Kedua layanan sudah sehat; hentikan trap pemulihan sementara.
+HAPROXY_TEMP_STOPPED=false
+trap - EXIT
 
 # ================= INSTALL LOG =================
 touch /root/log-install.txt
@@ -388,13 +326,13 @@ VLESS WS non-TLS     : 80  /vless -> 127.0.0.1:14017
 Trojan WS TLS        : 443 /trojan-ws -> 127.0.0.1:25432
 Trojan WS non-TLS    : 80  /trojan-ws -> 127.0.0.1:25432
 
-HTTPUpgrade (Nginx port 80 dan 443):
+HTTPUpgrade (HAProxy port 80 dan 443):
 VMess HTTPUpgrade    : /upvmess  -> 127.0.0.1:14019
 VLESS HTTPUpgrade    : /upvless  -> 127.0.0.1:14018
 Trojan HTTPUpgrade   : /uptrojan -> 127.0.0.1:14020
 
 Konfigurasi Xray     : /etc/xray/config.json
-Konfigurasi Nginx    : /etc/nginx/conf.d/xray.conf
+Konfigurasi HAProxy  : /etc/haproxy/haproxy.cfg
 Sertifikat           : /etc/xray/cert.crt
 Private key          : /etc/xray/private.key
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -414,7 +352,7 @@ echo -e "Domain         : ${domain}
 Raw TLS SNI    : ${vmess_domain}, ${vless_domain}, ${trojan_domain}"
 
 echo -e "XRAY Config    : /etc/xray/config.json"
-echo -e "NGINX Config   : /etc/nginx/conf.d/xray.conf"
+echo -e "HAProxy Config : /etc/haproxy/haproxy.cfg"
 echo -e "TLS Certificate: ${CERT_DOMAIN}"
 
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

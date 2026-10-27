@@ -35,7 +35,6 @@ fi
 echo -e "${YELLOW}[*] Updating system...${NC}"
 
 apt-get update -y
-apt-get upgrade -y
 
 # ==============================
 # INSTALL DEPENDENCIES
@@ -104,11 +103,19 @@ mkdir -p /etc/zivpn
 # CREATE USERS DB
 # ==============================
 
-if [[ -f "$SCRIPT_DIR/config/zivpn_users.db" ]]; then
-    cp "$SCRIPT_DIR/config/zivpn_users.db" /etc/zivpn/users.db
+if [[ -s /etc/zivpn/users.db ]]; then
+    echo -e "${GREEN}[INFO] Database pengguna ZiVPN yang sudah ada dipertahankan.${NC}"
 else
-    touch /etc/zivpn/users.db
-    echo "testuser" > /etc/zivpn/users.db
+    initial_password="$(openssl rand -hex 12)"
+    printf '%s\n' "$initial_password" > /etc/zivpn/users.db
+    chmod 600 /etc/zivpn/users.db
+    printf '%s\n' "$initial_password" > /root/zivpn-initial-password.txt
+    chmod 600 /root/zivpn-initial-password.txt
+    if [[ -w /dev/tty ]]; then
+        printf '[PENTING] Password ZiVPN awal: %s\nSimpan password ini. Salinan root-only: /root/zivpn-initial-password.txt\n' "$initial_password" > /dev/tty
+    else
+        echo -e "${YELLOW}[PENTING] Password ZiVPN disimpan di /root/zivpn-initial-password.txt (izin 600).${NC}"
+    fi
 fi
 
 # ==============================
@@ -251,6 +258,6 @@ echo -e " Service Status : $STATUS"
 echo -e " UDP Port       : 5667"
 echo -e " Config Path    : /etc/zivpn/config.json"
 echo -e " Users DB       : /etc/zivpn/users.db"
-echo -e " Default User   : testuser"
+echo -e " Authentication  : password-based (see /etc/zivpn/users.db)"
 
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

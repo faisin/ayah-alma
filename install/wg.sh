@@ -21,40 +21,37 @@ DEBIAN_FRONTEND=noninteractive apt install -y \
     iptables \
     resolvconf
 
-# Paksa muat modul kernel wireguard jika belum aktif
-modprobe wireguard >/dev/null 2>&1
-lsmod | grep -q wireguard || {
-    echo -e "${RED}[ERROR] Kernel WireGuard module tidak didukung oleh kernel VPS ini!${NC}"
+# Coba muat modul bila modular, lalu uji dukungan kernel sebenarnya.
+# WireGuard yang dikompilasi built-in tidak muncul di output lsmod.
+modprobe wireguard >/dev/null 2>&1 || true
+if ! ip link add dev wg-aayah-test type wireguard >/dev/null 2>&1; then
+    echo -e "${RED}[ERROR] Kernel VPS ini tidak mendukung interface WireGuard.${NC}"
     exit 1
-}
+fi
+ip link delete dev wg-aayah-test >/dev/null 2>&1 || true
 
 # Buat direktori config
 mkdir -p /etc/wireguard
 cd /etc/wireguard || exit
 
-# Hapus key lama jika ada untuk mencegah konflik
-rm -f private.key public.key wg0.conf
+# Jangan menghapus identitas atau konfigurasi WireGuard yang sudah ada saat
+# installer dijalankan ulang. Buat konfigurasi awal hanya pada instalasi baru.
+if [[ ! -s wg0.conf ]]; then
+    # Ambil interface default (eth0/fallback)
+    interface=$(ip -4 route show default | awk 'NR == 1 {print $5}')
+    if [[ -z "$interface" ]]; then
+        echo -e "${RED}[ERROR] Failed to detect network interface!${NC}"
+        exit 1
+    fi
 
-# Generate key
-privkey=$(wg genkey)
-pubkey=$(echo "$privkey" | wg pubkey)
+    privkey=$(wg genkey)
+    pubkey=$(printf '%s' "$privkey" | wg pubkey)
+    printf '%s\n' "$privkey" > private.key
+    printf '%s\n' "$pubkey" > public.key
+    chmod 600 private.key
+    chmod 644 public.key
 
-# Simpan private dan public key
-echo "$privkey" > private.key
-echo "$pubkey" > public.key
-chmod 600 private.key
-chmod 644 public.key
-
-# Ambil interface default (eth0/fallback)
-interface=$(ip route | grep default | awk '{print $5}' | head -n1)
-
-if [[ -z "$interface" ]]; then
-    echo -e "${RED}[ERROR] Failed to detect network interface!${NC}"
-    exit 1
-fi
-
-# Buat konfigurasi wg0.conf
-cat > wg0.conf <<EOF
+    cat > wg0.conf <<EOF
 [Interface]
 Address = 10.66.66.1/24
 ListenPort = 51820
@@ -64,8 +61,11 @@ PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -A FORWARD -o wg0 -j ACC
 PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -D FORWARD -o wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o $interface -j MASQUERADE
 SaveConfig = true
 EOF
-
-chmod 600 wg0.conf
+    chmod 600 wg0.conf
+else
+    echo -e "${GREEN}[INFO] Konfigurasi WireGuard yang ada dipertahankan.${NC}"
+    chmod 600 wg0.conf
+fi
 
 # Aktifkan IP forwarding
 cat > /etc/sysctl.d/30-wg.conf <<EOF
