@@ -41,8 +41,8 @@ systemctl stop dropbear 2>/dev/null || true
 
 cat > /etc/default/dropbear <<EOF
 NO_START=0
-DROPBEAR_PORT=109
-DROPBEAR_EXTRA_ARGS="-p 143 -W 65536 -b /etc/issue.net"
+DROPBEAR_PORT=1109
+DROPBEAR_EXTRA_ARGS="-p 1143 -W 65536 -b /etc/issue.net"
 DROPBEAR_RECEIVE_WINDOW=65536
 EOF
 
@@ -109,7 +109,7 @@ Description=Dropbear SSH Server
 After=network.target
 
 [Service]
-ExecStart=/usr/sbin/dropbear -E -F -p 127.0.0.1:109 -p 127.0.0.1:143 -W 65536 -b /etc/issue.net
+ExecStart=/usr/sbin/dropbear -E -F -p 127.0.0.1:1109 -p 127.0.0.1:1143 -r /etc/dropbear/dropbear_rsa_host_key -r /etc/dropbear/dropbear_ecdsa_host_key -W 65536 -b /etc/issue.net
 Restart=always
 
 [Install]
@@ -221,7 +221,7 @@ SSH PANEL (AYAH-ALMA)
 ━━━━━━━━━━━━━━━━━━━━━━
 
 OpenSSH             : 22
-Dropbear            : 109,143
+Dropbear            : 109,143 (via HAProxy; internal 1109,1143)
 SSH Websocket       : 2082
 SSH SSL Websocket   : 2096
 SSH SSL-only        : 444 (TLS tanpa WebSocket)
