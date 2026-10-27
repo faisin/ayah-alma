@@ -30,7 +30,7 @@ fi
 # ambil domain
 domain=$(cat /etc/xray/domain)
 
-# public nginx port
+# public HAProxy port
 tls="443"
 none="80"
 grpc="443"
@@ -196,7 +196,7 @@ EOF
 
 vmesslink3="vmess://$(echo "$vmess_json_grpc" | base64 -w 0)"
 
-# HTTPUpgrade via Nginx public ports 443 (TLS) and 80 (non-TLS)
+# HTTPUpgrade via HAProxy public ports 443 (TLS) and 80 (non-TLS)
 vmess_json_httpupgrade_tls=$(cat <<EOF
 {
   "v":"2","ps":"${user} - HTTPUpgrade TLS","add":"${domain}","port":"443",

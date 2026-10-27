@@ -10,7 +10,7 @@ echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━�
 # ambil domain
 domain=$(cat /etc/xray/domain)
 
-# public nginx port
+# public HAProxy port
 tls="443"
 grpc="443"
 
