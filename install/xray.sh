@@ -143,17 +143,56 @@ restore_haproxy() {
 }
 trap restore_haproxy EXIT
 
+# Validasi sertifikat mencakup masa berlaku, nama domain, dan kecocokan private key.
+certificate_matches_domain() {
+    local cert="$1"
+    [[ -s "$cert" ]] || return 1
+    openssl x509 -in "$cert" -noout -checkend 0 >/dev/null 2>&1 || return 1
+    openssl x509 -in "$cert" -noout -checkhost "$CERT_DOMAIN" >/dev/null 2>&1 || return 1
+}
+
+private_key_matches_certificate() {
+    local cert="$1" key="$2" cert_pub key_pub
+    [[ -s "$cert" && -s "$key" ]] || return 1
+    cert_pub="$(openssl x509 -in "$cert" -pubkey -noout 2>/dev/null | openssl pkey -pubin -outform DER 2>/dev/null | sha256sum | awk '{print $1}')" || return 1
+    key_pub="$(openssl pkey -in "$key" -pubout -outform DER 2>/dev/null | sha256sum | awk '{print $1}')" || return 1
+    [[ -n "$cert_pub" && "$cert_pub" == "$key_pub" ]]
+}
+
+installed_certificate_valid() {
+    certificate_matches_domain /etc/xray/cert.crt &&
+        private_key_matches_certificate /etc/xray/cert.crt /etc/xray/private.key
+}
+
+ACME_CERT_DIR="$HOME/.acme.sh/${CERT_DOMAIN}_ecc"
+acme_certificate_valid() {
+    certificate_matches_domain "$ACME_CERT_DIR/fullchain.cer" &&
+        private_key_matches_certificate "$ACME_CERT_DIR/fullchain.cer" "$ACME_CERT_DIR/${CERT_DOMAIN}.key"
+}
+
 if lsof -nP -iTCP:80 -sTCP:LISTEN 2>/dev/null | grep -q LISTEN; then
     echo -e "${RED}[ERROR] Port 80 masih digunakan proses lain setelah HAProxy dihentikan.${NC}"
     exit 1
 fi
 
+# acme.sh dapat mengembalikan status gagal ketika melewati penerbitan ulang
+# karena sertifikat masih berlaku. Jangan langsung menggagalkan installer:
+# periksa sertifikat yang sudah ada terlebih dahulu.
+ISSUE_STATUS=0
 "$ACME" --issue --standalone -d "$CERT_DOMAIN" --keylength ec-256 \
     --pre-hook "systemctl stop haproxy" \
-    --post-hook 'if grep -q "^frontend ayah_http_80" /etc/haproxy/haproxy.cfg 2>/dev/null; then systemctl start haproxy; fi' || {
-    echo -e "${RED}[ERROR] Gagal menerbitkan sertifikat HTTP-01 Standalone. Pastikan DNS domain mengarah ke VPS dan TCP port 80 terbuka.${NC}"
-    exit 1
-}
+    --post-hook 'if grep -q "^frontend ayah_http_80" /etc/haproxy/haproxy.cfg 2>/dev/null; then systemctl start haproxy; fi' || ISSUE_STATUS=$?
+
+if [[ "$ISSUE_STATUS" -ne 0 ]]; then
+    if acme_certificate_valid; then
+        echo -e "${YELLOW}[PERINGATAN] acme.sh tidak menerbitkan sertifikat baru, tetapi sertifikat ACME yang ada masih valid. Melanjutkan dengan sertifikat tersebut.${NC}"
+    elif installed_certificate_valid; then
+        echo -e "${YELLOW}[PERINGATAN] Penerbitan sertifikat dilewati/gagal, tetapi sertifikat terpasang masih valid untuk $CERT_DOMAIN. Akan mencoba mempertahankannya.${NC}"
+    else
+        echo -e "${RED}[ERROR] Gagal menerbitkan sertifikat dan tidak ditemukan sertifikat valid untuk $CERT_DOMAIN. Periksa DNS domain, akses TCP port 80, dan log acme.sh.${NC}"
+        exit 1
+    fi
+fi
 
 systemctl stop haproxy >/dev/null 2>&1 || true
 # Trap tetap aktif sampai konfigurasi final berhasil dan HAProxy kembali sehat.
@@ -162,30 +201,27 @@ systemctl stop haproxy >/dev/null 2>&1 || true
 
 mkdir -p /etc/xray
 
-"$ACME" \
+if ! "$ACME" \
     --install-cert \
     -d "$CERT_DOMAIN" \
     --ecc \
     --key-file /etc/xray/private.key \
     --fullchain-file /etc/xray/cert.crt \
-    --reloadcmd 'cat /etc/xray/cert.crt /etc/xray/private.key > /etc/haproxy/certs/ayah-alma.pem && chmod 600 /etc/haproxy/certs/ayah-alma.pem && if grep -q "^frontend ayah_http_80" /etc/haproxy/haproxy.cfg 2>/dev/null; then haproxy -c -f /etc/haproxy/haproxy.cfg && systemctl reload haproxy || systemctl restart haproxy; fi; if systemctl is-active --quiet xray; then systemctl restart xray; fi; if systemctl is-active --quiet ayah-ssh-ssl; then systemctl restart ayah-ssh-ssl; fi' || {
-        echo -e "${RED}[ERROR] Gagal memasang sertifikat.${NC}"
+    --reloadcmd 'cat /etc/xray/cert.crt /etc/xray/private.key > /etc/haproxy/certs/ayah-alma.pem && chmod 600 /etc/haproxy/certs/ayah-alma.pem && if grep -q "^frontend ayah_http_80" /etc/haproxy/haproxy.cfg 2>/dev/null; then haproxy -c -f /etc/haproxy/haproxy.cfg && systemctl reload haproxy || systemctl restart haproxy; fi; if systemctl is-active --quiet xray; then systemctl restart xray; fi; if systemctl is-active --quiet ayah-ssh-ssl; then systemctl restart ayah-ssh-ssl; fi'; then
+    if installed_certificate_valid; then
+        echo -e "${YELLOW}[PERINGATAN] acme.sh gagal memasang ulang sertifikat, tetapi sertifikat dan private key yang sudah terpasang valid dan cocok. Mempertahankan sertifikat yang ada.${NC}"
+    else
+        echo -e "${RED}[ERROR] Gagal memasang sertifikat dan tidak ada sertifikat terpasang yang valid untuk $CERT_DOMAIN.${NC}"
         exit 1
-    }
+    fi
+fi
 
 # ================= PERMISSION =================
 
-if [[ ! -s /etc/xray/private.key || ! -s /etc/xray/cert.crt ]]; then
-    echo -e "${RED}[ERROR] Sertifikat atau private key tidak ditemukan.${NC}"
+if ! installed_certificate_valid; then
+    echo -e "${RED}[ERROR] Sertifikat/private key tidak valid, domain tidak cocok, kedaluwarsa, atau key tidak cocok dengan sertifikat.${NC}"
     exit 1
 fi
-
-openssl x509 \
-    -in /etc/xray/cert.crt \
-    -noout -checkend 0 >/dev/null 2>&1 || {
-        echo -e "${RED}[ERROR] Sertifikat tidak valid atau kedaluwarsa.${NC}"
-        exit 1
-    }
 
 chmod 600 /etc/xray/private.key
 chmod 644 /etc/xray/cert.crt
