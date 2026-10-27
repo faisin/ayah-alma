@@ -311,8 +311,8 @@ def service_menu():
                     "callback_data": "service_dropbear"
                 },
                 {
-                    "text": "🌐 Nginx",
-                    "callback_data": "service_nginx"
+                    "text": "🌐 HAProxy",
+                    "callback_data": "service_haproxy"
                 }
             ],
             [
@@ -538,7 +538,7 @@ def get_services_status():
         f"🔵 Xray: {service_state('xray')}\n"
         f"🔐 SSH: {service_state('ssh')}\n"
         f"🟢 Dropbear: {service_state('dropbear')}\n"
-        f"🌐 Nginx: {service_state('nginx')}"
+        f"🌐 HAProxy: {service_state('haproxy')}"
     )
 
 
@@ -557,7 +557,7 @@ def get_service_detail(service):
         "xray": "🔵 Xray",
         "ssh": "🔐 SSH",
         "dropbear": "🟢 Dropbear",
-        "nginx": "🌐 Nginx"
+        "haproxy": "🌐 HAProxy"
     }
 
     name = names.get(service, service)
@@ -1566,7 +1566,7 @@ def handle_callback(
         "service_xray",
         "service_ssh",
         "service_dropbear",
-        "service_nginx",
+        "service_haproxy",
         "kelola_akun",
         "akun_vmess",
         "akun_vless",
@@ -1917,7 +1917,7 @@ def handle_callback(
         "service_xray",
         "service_ssh",
         "service_dropbear",
-        "service_nginx"
+        "service_haproxy"
     ):
         service = data.replace(
             "service_",

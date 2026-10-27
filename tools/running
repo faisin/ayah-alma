@@ -12,7 +12,7 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 
 services=(
   "xray"
-  "nginx"
+  "haproxy"
   "dropbear"
   "wg-quick@wg0"
   "udp-custom"
