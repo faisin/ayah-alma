@@ -1,0 +1,13 @@
+AYAH ALMA — TCP TLS passthrough
+
+HAProxy TCP passthrough routes:
+  public TCP 10011 -> 127.0.0.1:10001 (Xray VMess TCP TLS)
+  public TCP 10012 -> 127.0.0.1:10002 (Xray VLESS TCP TLS)
+  public TCP 10013 -> 127.0.0.1:10003 (Xray Trojan TCP TLS)
+
+HAProxy HTTP/HTTPS owns public ports 80 and 443. Raw TCP/TLS cannot be
+added as ordinary HTTP location blocks, and cannot share the same public 443
+listener with the current HAProxy HTTPS frontend in this configuration. Therefore,
+these raw TCP/TLS profiles must use ports 10011, 10012, and 10013 respectively.
+Open TCP 10011-10013 in the VPS/cloud firewall and use the matching port in the
+client profile. Xray's local TLS listeners remain bound to 127.0.0.1.

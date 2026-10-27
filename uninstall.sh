@@ -55,6 +55,7 @@ echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━�
 
 services=(
     nginx
+    haproxy
     xray
     dropbear
     ws-dropbear
@@ -123,7 +124,9 @@ rm -rf /etc/ayah-alma
 rm -rf /etc/autoscriptvpn
 rm -rf /etc/udp-custom
 
-rm -f /etc/nginx/conf.d/xray.conf
+rm -f /etc/nginx/conf.d/xray.conf /etc/nginx/conf.d/acme-bootstrap.conf
+rm -f /etc/haproxy/haproxy.cfg
+rm -rf /etc/haproxy/certs
 
 rm -f /etc/default/dropbear
 rm -f /etc/issue.net
@@ -188,6 +191,7 @@ warn "Removing packages..."
 
 apt remove -y \
     nginx \
+    haproxy \
     dropbear \
     stunnel4 \
     wireguard \
@@ -218,7 +222,8 @@ echo -e "${GREEN}✅ AYAH ALMA VPS UNINSTALLED${NC}"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 echo ""
-echo -e " NGINX       : REMOVED"
+echo -e " HAProxy     : REMOVED"
+echo -e " NGINX       : DISABLED/REMOVED IF INSTALLED"
 echo -e " XRAY        : REMOVED"
 echo -e " SSH WS      : REMOVED"
 echo -e " WireGuard   : REMOVED"

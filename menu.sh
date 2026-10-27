@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # AYA ALMA PANEL - menu.sh
 # Visual refresh: colored dashboard/menu. Existing account commands are preserved.
-# This script does not edit Xray/Nginx configuration.
+# This script does not edit Xray/HAProxy configuration.
 
 PANEL_VERSION="v2.1.1"
 
@@ -145,7 +145,7 @@ LOMBOK_BANNER
     print_bar
     printf '  %bSERVICE MONITOR%b\n' "$C_WHITE$C_BOLD" "$C_RESET"
     printf ' %b%-13s%b : ' "$C_CYAN" 'Xray Core' "$C_RESET"; service_state xray; printf '\n'
-    printf ' %b%-13s%b : ' "$C_CYAN" 'Nginx' "$C_RESET"; service_state nginx; printf '\n'
+    printf ' %b%-13s%b : ' "$C_CYAN" 'HAProxy' "$C_RESET"; service_state haproxy; printf '\n'
     printf ' %b%-13s%b : ' "$C_CYAN" 'WireGuard' "$C_RESET"; service_state wg-quick@wg0; printf '\n'
     printf ' %b%-13s%b : ' "$C_CYAN" 'Dropbear' "$C_RESET"; service_state dropbear; printf '\n'
     printf ' %b%-13s%b : ' "$C_CYAN" 'Dropbear WS' "$C_RESET"; service_state dropbear-ws; printf '\n'
@@ -194,7 +194,7 @@ while true; do
     menu_item 6 'Status layanan (running)'
     menu_item 7 'Tools menu'
     menu_item 8 'Restart Xray'
-    menu_item 9 'Restart Nginx'
+    menu_item 9 'Restart HAProxy'
     menu_item 0 'Keluar'
     print_bar
     printf '  %bPilih menu [0-9]: %b' "$C_GREEN$C_BOLD" "$C_RESET"
@@ -216,10 +216,10 @@ while true; do
             sleep 2
             ;;
         9)
-            if systemctl restart nginx; then
-                printf '%bNginx berhasil direstart.%b\n' "$C_GREEN" "$C_RESET"
+            if systemctl restart haproxy; then
+                printf '%bHAProxy berhasil direstart.%b\n' "$C_GREEN" "$C_RESET"
             else
-                printf '%bGagal restart Nginx; periksa journalctl -u nginx.%b\n' "$C_RED" "$C_RESET"
+                printf '%bGagal restart HAProxy; periksa journalctl -u haproxy.%b\n' "$C_RED" "$C_RESET"
             fi
             sleep 2
             ;;
