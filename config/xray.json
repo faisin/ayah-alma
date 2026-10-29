@@ -19,6 +19,10 @@
           "path": "/vmess"
         }
       },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      },
       "tag": "vmess-ws-tls"
     },
     {
@@ -35,6 +39,10 @@
           "path": "/vmess"
         }
       },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      },
       "tag": "vmess-ws-nontls"
     },
     {
@@ -50,6 +58,10 @@
         "grpcSettings": {
           "serviceName": "vmess-grpc"
         }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
       },
       "tag": "vmess-grpc"
     },
@@ -68,6 +80,10 @@
           "path": "/vless"
         }
       },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      },
       "tag": "vless-ws-tls"
     },
     {
@@ -84,6 +100,10 @@
         "wsSettings": {
           "path": "/vless"
         }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
       },
       "tag": "vless-ws-nontls"
     },
@@ -102,6 +122,10 @@
           "serviceName": "vless-grpc"
         }
       },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      },
       "tag": "vless-grpc"
     },
     {
@@ -118,7 +142,31 @@
           "path": "/trojan-ws"
         }
       },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      },
       "tag": "trojan-ws-tls"
+    },
+    {
+      "listen": "127.0.0.1",
+      "port": 25433,
+      "protocol": "trojan",
+      "settings": {
+        "clients": []
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "none",
+        "wsSettings": {
+          "path": "/trojan-ws"
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      },
+      "tag": "trojan-ws-nontls"
     },
     {
       "listen": "127.0.0.1",
@@ -133,6 +181,10 @@
         "grpcSettings": {
           "serviceName": "trojan-grpc"
         }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
       },
       "tag": "trojan-grpc"
     },
@@ -151,6 +203,10 @@
           "path": "/ss-ws"
         }
       },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      },
       "tag": "ssws-ws-tls"
     },
     {
@@ -168,6 +224,10 @@
           "path": "/ss-ws"
         }
       },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      },
       "tag": "ssws-ws-nontls"
     },
     {
@@ -184,6 +244,10 @@
         "grpcSettings": {
           "serviceName": "ss-grpc"
         }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
       },
       "tag": "ssws-grpc"
     },
@@ -210,6 +274,10 @@
             "type": "none"
           }
         }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
       },
       "tag": "vmess-tcp-tls"
     },
@@ -238,6 +306,10 @@
           }
         }
       },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      },
       "tag": "vless-tcp-tls"
     },
     {
@@ -264,6 +336,10 @@
           }
         }
       },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      },
       "tag": "trojan-tcp-tls"
     },
     {
@@ -281,6 +357,10 @@
           "path": "/upvless"
         }
       },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      },
       "tag": "vless-httpupgrade"
     },
     {
@@ -297,6 +377,10 @@
           "path": "/upvmess"
         }
       },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
+      },
       "tag": "vmess-httpupgrade"
     },
     {
@@ -312,6 +396,10 @@
         "httpupgradeSettings": {
           "path": "/uptrojan"
         }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
       },
       "tag": "trojan-httpupgrade"
     }
