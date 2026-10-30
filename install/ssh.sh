@@ -32,6 +32,8 @@ DEBIAN_FRONTEND=noninteractive apt install -y \
 mkdir -p /usr/local/bin
 
 # ================= INSTALL / CONFIGURE DROPBEAR =================
+# Dropbear internal loopback: 1109/1143.
+# HAProxy owns public 109/143; DropbearWS connects to 127.0.0.1:1109.
 
 echo ""
 echo -e "${GREEN}[INFO] Configuring Dropbear...${NC}"
@@ -221,7 +223,7 @@ SSH PANEL (AYAH-ALMA)
 ━━━━━━━━━━━━━━━━━━━━━━
 
 OpenSSH             : 22
-Dropbear            : 109,143 (via HAProxy; internal 1109,1143)
+Dropbear            : 109,143 (HAProxy -> loopback 1109,1143)
 SSH Websocket       : 2082
 SSH SSL Websocket   : 2096
 SSH SSL-only        : 444 (TLS tanpa WebSocket)
