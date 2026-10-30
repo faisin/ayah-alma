@@ -1,0 +1,48 @@
+#!/bin/bash
+# Menu VLESS - by Ayah Alma
+
+GREEN='\e[1;32m'
+YELLOW='\e[1;33m'
+CYAN='\e[1;36m'
+NC='\e[0m'
+
+clear
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${CYAN}              ⚙️ MENU VLESS XRAY              ${NC}"
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${GREEN}[1]${NC} Tambah Akun VLESS"
+echo -e "${GREEN}[2]${NC} Hapus Akun VLESS"
+echo -e "${GREEN}[3]${NC} Cek Login VLESS"
+echo -e "${GREEN}[4]${NC} Perpanjang Masa Aktif Akun"
+echo -e "${GREEN}[x]${NC} Kembali ke menu utama"
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+read -p "👉 Pilih opsi: " opt
+
+case $opt in
+1)
+bash /etc/ayah-alma/xray/add-vless.sh
+;;
+
+2)
+bash /etc/ayah-alma/xray/del-vless.sh
+;;
+
+3)
+bash /etc/ayah-alma/xray/cek-vless.sh
+;;
+
+4)
+bash /etc/ayah-alma/xray/renew-vless.sh
+;;
+
+x)
+menu
+;;
+
+*)
+echo "❌ Pilihan salah!"
+sleep 1
+m-vless
+;;
+esac
