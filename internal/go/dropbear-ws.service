@@ -1,6 +1,7 @@
 [Unit]
 Description=Go WS Stunnel Service - by Ayah Alma
-After=network.target
+After=network.target dropbear.service
+Wants=dropbear.service
 
 [Service]
 User=root
