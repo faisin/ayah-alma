@@ -1,9 +1,10 @@
 #!/bin/bash
 # Setup SSH WebSocket + UDPGW - by Ayah-Alma
-# Converted for Ayah-Alma Project (Optimized & Fixed)
+# Corrected and aligned with AYAH ALMA repository structure
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
+YELLOW='\033[1;33m'
 NC='\033[0m'
 
 clear
@@ -15,8 +16,15 @@ sleep 1
 
 # ================= INSTALL DEPENDENCY =================
 
-apt update -y
-DEBIAN_FRONTEND=noninteractive apt install -y \
+echo ""
+echo -e "${GREEN}[INFO] Installing dependencies...${NC}"
+
+apt-get update -y || {
+    echo -e "${RED}[ERROR] apt update gagal.${NC}"
+    exit 1
+}
+
+DEBIAN_FRONTEND=noninteractive apt-get install -y \
     openssh-server \
     curl \
     wget \
@@ -27,7 +35,10 @@ DEBIAN_FRONTEND=noninteractive apt install -y \
     openssl \
     file \
     iproute2 \
-    dropbear
+    dropbear || {
+    echo -e "${RED}[ERROR] Gagal memasang dependency.${NC}"
+    exit 1
+}
 
 mkdir -p /usr/local/bin
 
@@ -39,37 +50,51 @@ echo ""
 
 systemctl disable --now dropbear.socket 2>/dev/null || true
 systemctl stop dropbear 2>/dev/null || true
-systemctl stop dropbear-ws dropbear-wss 2>/dev/null || true
+systemctl stop dropbear-ws stunnel-ws dropbear-wss 2>/dev/null || true
 
-# Remove legacy WebSocket/stunnel units from previous AYAH ALMA revisions.
-for old_svc in stunnel-ws ws-stunnel ws-dropbear ayah-ssh-ssl stunnel4; do
+# Remove obsolete services from previous AYAH ALMA revisions.
+# stunnel-ws is a CURRENT service and must not be deleted.
+for old_svc in ws-stunnel ws-dropbear ayah-ssh-ssl stunnel4 dropbear-wss; do
     systemctl disable --now "$old_svc" 2>/dev/null || true
 done
-rm -f /etc/systemd/system/stunnel-ws.service \
-      /etc/systemd/system/ws-stunnel.service \
-      /etc/systemd/system/ws-dropbear.service \
-      /etc/systemd/system/ayah-ssh-ssl.service
-systemctl daemon-reload
-rm -f /usr/local/bin/stunnelws /usr/local/bin/ws-stunnel /usr/local/bin/ws-dropbear
 
-# Refuse to steal the requested Dropbear/bridge ports if another daemon still owns them.
+rm -f \
+    /etc/systemd/system/ws-stunnel.service \
+    /etc/systemd/system/ws-dropbear.service \
+    /etc/systemd/system/ayah-ssh-ssl.service \
+    /etc/systemd/system/dropbear-wss.service
+
+rm -f \
+    /usr/local/bin/ws-stunnel \
+    /usr/local/bin/ws-dropbear \
+    /usr/local/bin/dropbearwss
+
+systemctl daemon-reload
+
+# Refuse to use ports already occupied by another daemon.
 for port in 109 143 2082 2096; do
     if ss -H -lnt "sport = :$port" 2>/dev/null | grep -q .; then
-        echo -e "${RED}[ERROR] TCP port $port masih dipakai layanan lain. Hentikan/pindahkan layanan tersebut sebelum memasang Dropbear.${NC}"
+        echo -e "${RED}[ERROR] TCP port $port masih dipakai layanan lain.${NC}"
         ss -lntp "sport = :$port" 2>/dev/null || true
         exit 1
     fi
 done
+
+# OpenSSH must not conflict with Dropbear ports.
 if command -v sshd >/dev/null 2>&1; then
     for port in 109 143; do
-        if sshd -T 2>/dev/null | awk '$1 == "port" {print $2}' | grep -qx "$port"; then
-            echo -e "${RED}[ERROR] OpenSSH juga memakai port $port. Sisakan OpenSSH pada port 22 agar tidak bentrok dengan Dropbear.${NC}"
+        if sshd -T 2>/dev/null |
+            awk '$1 == "port" {print $2}' |
+            grep -qx "$port"; then
+
+            echo -e "${RED}[ERROR] OpenSSH juga memakai port $port.${NC}"
+            echo -e "${RED}Sisakan OpenSSH pada port 22.${NC}"
             exit 1
         fi
     done
 fi
 
-cat > /etc/default/dropbear <<EOF
+cat > /etc/default/dropbear <<'EOF'
 NO_START=1
 DROPBEAR_PORT=109
 DROPBEAR_EXTRA_ARGS="-p 143 -W 65536 -b /etc/issue.net"
@@ -79,24 +104,36 @@ EOF
 mkdir -p /etc/dropbear
 
 if [ ! -f /etc/dropbear/dropbear_rsa_host_key ]; then
-    dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key >/dev/null 2>&1
+    dropbearkey -t rsa \
+        -f /etc/dropbear/dropbear_rsa_host_key >/dev/null 2>&1 || {
+        echo -e "${RED}[ERROR] Gagal membuat RSA host key.${NC}"
+        exit 1
+    }
 fi
 
 if [ ! -f /etc/dropbear/dropbear_ecdsa_host_key ]; then
-    dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key >/dev/null 2>&1
+    dropbearkey -t ecdsa \
+        -f /etc/dropbear/dropbear_ecdsa_host_key >/dev/null 2>&1 || {
+        echo -e "${RED}[ERROR] Gagal membuat ECDSA host key.${NC}"
+        exit 1
+    }
 fi
 
-# AMBIL ISSUE.NET DARI BERBAGAI ALTERNATIF DIREKTORI
+# ================= INSTALL ISSUE.NET =================
+
 if [ -f "$SCRIPT_DIR/config/issue.net" ]; then
     cp "$SCRIPT_DIR/config/issue.net" /etc/issue.net
 else
     echo -e "${RED}[ERROR] config/issue.net tidak ditemukan.${NC}"
     exit 1
 fi
+
 chmod 644 /etc/issue.net
 
 # ================= DROPBEAR PUBLIC PORTS =================
-# Dropbear owns public TCP 109 and 143 directly. HAProxy does not bind these ports.
+# Dropbear directly owns TCP 109 and 143.
+# HAProxy does not bind these ports.
+
 cat > /etc/systemd/system/dropbear.service <<'EOF'
 [Unit]
 Description=AYAH ALMA Dropbear SSH (ports 109 and 143)
@@ -112,31 +149,89 @@ RestartSec=2
 WantedBy=multi-user.target
 EOF
 
-# ================= BUILD GO WS =================
+# ================= BUILD GO WEBSOCKET SERVICES =================
 
 echo ""
 echo -e "${GREEN}[INFO] Building Go WebSocket Services...${NC}"
 echo ""
 
 if ! command -v go >/dev/null 2>&1; then
-    apt install -y golang-go
+    echo -e "${RED}[ERROR] Go compiler tidak tersedia.${NC}"
+    exit 1
 fi
 
-# Tentukan base direktori secara dinamis
 GO_DIR="$SCRIPT_DIR/internal/go"
-[ -d "$GO_DIR/dropbear-ws" ] || { echo -e "${RED}[ERROR] dropbear-ws source tidak ditemukan.${NC}"; exit 1; }
-[ -d "$GO_DIR/dropbear-wss" ] || { echo -e "${RED}[ERROR] dropbear-wss source tidak ditemukan.${NC}"; exit 1; }
 
-( cd "$GO_DIR" && go build -ldflags="-s -w" -o /usr/local/bin/dropbearws ./dropbear-ws )
-( cd "$GO_DIR" && go build -ldflags="-s -w" -o /usr/local/bin/dropbearwss ./dropbear-wss )
-chmod +x /usr/local/bin/dropbearws /usr/local/bin/dropbearwss
-[ -x /usr/local/bin/dropbearws ] || exit 1
-[ -x /usr/local/bin/dropbearwss ] || exit 1
+# Validate source directories.
+for source in dropbear-ws stunnel-ws; do
+    if [ ! -f "$GO_DIR/$source/main.go" ]; then
+        echo -e "${RED}[ERROR] Source $source/main.go tidak ditemukan.${NC}"
+        exit 1
+    fi
+done
 
-[ -f "$GO_DIR/dropbear-ws.service" ] || { echo -e "${RED}[ERROR] dropbear-ws.service tidak ditemukan.${NC}"; exit 1; }
-cp "$GO_DIR/dropbear-ws.service" /etc/systemd/system/dropbear-ws.service
-[ -f "$GO_DIR/dropbear-wss.service" ] || { echo -e "${RED}[ERROR] dropbear-wss.service tidak ditemukan.${NC}"; exit 1; }
-cp "$GO_DIR/dropbear-wss.service" /etc/systemd/system/dropbear-wss.service
+if [ ! -f "$GO_DIR/go.mod" ]; then
+    echo -e "${RED}[ERROR] internal/go/go.mod tidak ditemukan.${NC}"
+    exit 1
+fi
+
+# Build Dropbear WebSocket.
+echo -e "${GREEN}[INFO] Building dropbear-ws...${NC}"
+
+(
+    cd "$GO_DIR" &&
+    go build -ldflags="-s -w" \
+        -o /usr/local/bin/dropbearws \
+        ./dropbear-ws
+) || {
+    echo -e "${RED}[ERROR] Build dropbear-ws gagal.${NC}"
+    exit 1
+}
+
+# Build Stunnel WebSocket.
+echo -e "${GREEN}[INFO] Building stunnel-ws...${NC}"
+
+(
+    cd "$GO_DIR" &&
+    go build -ldflags="-s -w" \
+        -o /usr/local/bin/stunnelws \
+        ./stunnel-ws
+) || {
+    echo -e "${RED}[ERROR] Build stunnel-ws gagal.${NC}"
+    exit 1
+}
+
+chmod 755 \
+    /usr/local/bin/dropbearws \
+    /usr/local/bin/stunnelws
+
+[ -x /usr/local/bin/dropbearws ] || {
+    echo -e "${RED}[ERROR] Binary dropbearws tidak berhasil dibuat.${NC}"
+    exit 1
+}
+
+[ -x /usr/local/bin/stunnelws ] || {
+    echo -e "${RED}[ERROR] Binary stunnelws tidak berhasil dibuat.${NC}"
+    exit 1
+}
+
+# ================= INSTALL GO SYSTEMD SERVICES =================
+
+if [ ! -f "$GO_DIR/dropbear-ws.service" ]; then
+    echo -e "${RED}[ERROR] dropbear-ws.service tidak ditemukan.${NC}"
+    exit 1
+fi
+
+if [ ! -f "$GO_DIR/stunnel-ws.service" ]; then
+    echo -e "${RED}[ERROR] stunnel-ws.service tidak ditemukan.${NC}"
+    exit 1
+fi
+
+cp "$GO_DIR/dropbear-ws.service" \
+    /etc/systemd/system/dropbear-ws.service
+
+cp "$GO_DIR/stunnel-ws.service" \
+    /etc/systemd/system/stunnel-ws.service
 
 # ================= INSTALL BADVPN UDPGW =================
 
@@ -145,14 +240,28 @@ echo -e "${GREEN}[INFO] Installing BadVPN UDPGW...${NC}"
 echo ""
 
 ARCH="$(dpkg --print-architecture 2>/dev/null || true)"
+
 BADVPN_BIN="$SCRIPT_DIR/bin/$ARCH/badvpn-udpgw"
-[ -f "$BADVPN_BIN" ] || { echo -e "${RED}[ERROR] Binary badvpn-udpgw tidak ditemukan: $BADVPN_BIN${NC}"; exit 1; }
-file "$BADVPN_BIN" | grep -q 'ELF' || { echo -e "${RED}[ERROR] badvpn-udpgw bukan ELF valid.${NC}"; exit 1; }
+
+if [ ! -f "$BADVPN_BIN" ]; then
+    echo -e "${RED}[ERROR] Binary badvpn-udpgw tidak ditemukan: $BADVPN_BIN${NC}"
+    exit 1
+fi
+
+if ! file "$BADVPN_BIN" | grep -q 'ELF'; then
+    echo -e "${RED}[ERROR] badvpn-udpgw bukan ELF valid.${NC}"
+    exit 1
+fi
+
 install -m 755 "$BADVPN_BIN" /usr/local/bin/badvpn-udpgw
 
-[ -f "$SCRIPT_DIR/sshws/udpgw.service" ] || { echo -e "${RED}[ERROR] udpgw.service tidak ditemukan.${NC}"; exit 1; }
-cp "$SCRIPT_DIR/sshws/udpgw.service" /etc/systemd/system/
+if [ ! -f "$SCRIPT_DIR/sshws/udpgw.service" ]; then
+    echo -e "${RED}[ERROR] udpgw.service tidak ditemukan.${NC}"
+    exit 1
+fi
 
+cp "$SCRIPT_DIR/sshws/udpgw.service" \
+    /etc/systemd/system/udpgw.service
 
 # ================= INSTALL UDP CUSTOM =================
 
@@ -161,56 +270,108 @@ echo -e "${GREEN}[INFO] Installing UDP Custom...${NC}"
 echo ""
 
 UDP_BIN="$SCRIPT_DIR/bin/$ARCH/udp-custom"
-[ -f "$UDP_BIN" ] || { echo -e "${RED}[ERROR] Binary udp-custom tidak ditemukan: $UDP_BIN${NC}"; exit 1; }
-file "$UDP_BIN" | grep -q 'ELF' || { echo -e "${RED}[ERROR] udp-custom bukan ELF valid.${NC}"; exit 1; }
+
+if [ ! -f "$UDP_BIN" ]; then
+    echo -e "${RED}[ERROR] Binary udp-custom tidak ditemukan: $UDP_BIN${NC}"
+    exit 1
+fi
+
+if ! file "$UDP_BIN" | grep -q 'ELF'; then
+    echo -e "${RED}[ERROR] udp-custom bukan ELF valid.${NC}"
+    exit 1
+fi
+
 install -m 755 "$UDP_BIN" /usr/local/bin/udp-custom
 
 mkdir -p /etc/udp-custom
-[ -f "$SCRIPT_DIR/config/udp-custom.json" ] || { echo -e "${RED}[ERROR] config/udp-custom.json tidak ditemukan.${NC}"; exit 1; }
 
-# Preserve a valid existing configuration; otherwise create a unique first-install password.
-if [ -s /etc/udp-custom/config.json ] && jq -e '.auth.config | type == "array" and length > 0' /etc/udp-custom/config.json >/dev/null 2>&1; then
+if [ ! -f "$SCRIPT_DIR/config/udp-custom.json" ]; then
+    echo -e "${RED}[ERROR] config/udp-custom.json tidak ditemukan.${NC}"
+    exit 1
+fi
+
+# Preserve a valid existing configuration.
+if [ -s /etc/udp-custom/config.json ] &&
+    jq -e '.auth.config | type == "array" and length > 0' \
+        /etc/udp-custom/config.json >/dev/null 2>&1; then
+
     echo -e "${GREEN}[INFO] Konfigurasi/password UDP Custom yang sudah ada dipertahankan.${NC}"
+
 else
     initial_udp_password="$(openssl rand -hex 12)"
-    jq --arg password "$initial_udp_password" '.auth.config = [$password]' \
-        "$SCRIPT_DIR/config/udp-custom.json" > /etc/udp-custom/config.json
+
+    jq --arg password "$initial_udp_password" \
+        '.auth.config = [$password]' \
+        "$SCRIPT_DIR/config/udp-custom.json" \
+        > /etc/udp-custom/config.json || {
+        echo -e "${RED}[ERROR] Gagal membuat konfigurasi UDP Custom.${NC}"
+        exit 1
+    }
+
     chmod 600 /etc/udp-custom/config.json
-    printf '%s\n' "$initial_udp_password" > /root/udp-custom-initial-password.txt
+
+    printf '%s\n' "$initial_udp_password" \
+        > /root/udp-custom-initial-password.txt
+
     chmod 600 /root/udp-custom-initial-password.txt
+
     if [[ -w /dev/tty ]]; then
-        printf '[PENTING] Password UDP Custom awal: %s\nSimpan password ini. Salinan root-only: /root/udp-custom-initial-password.txt\n' "$initial_udp_password" > /dev/tty
+        printf '[PENTING] Password UDP Custom awal: %s\nSimpan password ini. Salinan root-only: /root/udp-custom-initial-password.txt\n' \
+            "$initial_udp_password" > /dev/tty
     else
         echo -e "${YELLOW}[PENTING] Password UDP Custom disimpan di /root/udp-custom-initial-password.txt (izin 600).${NC}"
     fi
 fi
 
-[ -f "$SCRIPT_DIR/sshws/udp-custom.service" ] || { echo -e "${RED}[ERROR] udp-custom.service tidak ditemukan.${NC}"; exit 1; }
-cp "$SCRIPT_DIR/sshws/udp-custom.service" /etc/systemd/system/
+if [ ! -f "$SCRIPT_DIR/sshws/udp-custom.service" ]; then
+    echo -e "${RED}[ERROR] udp-custom.service tidak ditemukan.${NC}"
+    exit 1
+fi
+
+cp "$SCRIPT_DIR/sshws/udp-custom.service" \
+    /etc/systemd/system/udp-custom.service
 
 # ================= PERMISSION & SYSTEMD RELOAD =================
 
-chmod 644 /etc/systemd/system/dropbear.service 2>/dev/null || true
-chmod 644 /etc/systemd/system/dropbear-ws.service 2>/dev/null || true
-chmod 644 /etc/systemd/system/dropbear-wss.service 2>/dev/null || true
-chmod 644 /etc/systemd/system/udpgw.service 2>/dev/null || true
-chmod 644 /etc/systemd/system/udp-custom.service 2>/dev/null || true
+chmod 644 \
+    /etc/systemd/system/dropbear.service \
+    /etc/systemd/system/dropbear-ws.service \
+    /etc/systemd/system/stunnel-ws.service \
+    /etc/systemd/system/udpgw.service \
+    /etc/systemd/system/udp-custom.service
 
 systemctl daemon-reload
 
 # ================= ENABLE & START SERVICES =================
 
-for svc in ssh dropbear dropbear-ws dropbear-wss udpgw udp-custom; do
-    if systemctl list-unit-files | grep -q "^${svc}.service"; then
-        systemctl enable "$svc" >/dev/null 2>&1
-        systemctl restart "$svc" >/dev/null 2>&1
+echo ""
+echo -e "${GREEN}[INFO] Enabling SSH services...${NC}"
+
+for svc in ssh dropbear dropbear-ws stunnel-ws udpgw udp-custom; do
+    if systemctl list-unit-files --type=service --no-legend |
+        awk '{print $1}' |
+        grep -qx "${svc}.service"; then
+
+        systemctl enable "$svc" >/dev/null 2>&1 || {
+            echo -e "${RED}[ERROR] Gagal enable $svc.${NC}"
+            exit 1
+        }
+
+        systemctl restart "$svc" || {
+            echo -e "${RED}[ERROR] Gagal menjalankan $svc.${NC}"
+            exit 1
+        }
+    else
+        echo -e "${RED}[ERROR] Unit ${svc}.service tidak ditemukan.${NC}"
+        exit 1
     fi
 done
 
 # ================= INSTALL LOG =================
 
 touch /root/log-install.txt
-cat >> /root/log-install.txt <<EOF
+
+cat >> /root/log-install.txt <<'EOF'
 
 ━━━━━━━━━━━━━━━━━━━━━━
 SSH PANEL (AYAH-ALMA)
