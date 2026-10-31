@@ -107,8 +107,9 @@ IP VPS       : $IP
 
 OpenSSH      : 22
 Dropbear     : 109, 143
-SSH WS       : 80 (/ssh-ws) atau 443 (/ssh-ws)
+SSH WS       : 443 (/ssh-ws)
 SSH WSS      : 443 (/ssh-wss)
+SSH SSL-only : 444 (TLS tanpa WebSocket)
 UdpSSH       : 1-65535
 BadVPN       : 7300
 
@@ -127,23 +128,10 @@ SSH WSS
 $DOMAIN:443@$user:$pass
 Path: /ssh-wss
 
-PAYLOAD CGI
-GET /cdn-cgi/trace HTTP/1.1[crlf]
-Host: $DOMAIN[crlf]
-[crlf]
-
-PAYLOAD X-ONLINE-HOST
-GET / HTTP/1.1[crlf]
-Host: $DOMAIN[crlf]
-X-Online-Host: $DOMAIN[crlf]
-Connection: Keep-Alive[crlf]
-[crlf]
-
-PAYLOAD X-REAL-HOST
-GET / HTTP/1.1[crlf]
-Host: $DOMAIN[crlf]
-X-Real-Host: $DOMAIN:80[crlf]
-[crlf]
+SSH SSL-only (TLS, tanpa WebSocket)
+Host: $DOMAIN
+Port: 444
+Mode: SSL/TLS langsung, tanpa payload dan tanpa WebSocket
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Saved File   : $ACCOUNT_FILE

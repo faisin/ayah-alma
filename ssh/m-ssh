@@ -75,9 +75,9 @@ systemctl status ssh --no-pager
 echo ""
 systemctl status dropbear --no-pager
 echo ""
-systemctl status dropbear-ws --no-pager
+systemctl status ws-dropbear --no-pager
 echo ""
-systemctl status dropbear-wss --no-pager
+systemctl status ws-stunnel --no-pager
 echo ""
 systemctl status udp-custom --no-pager
 echo ""
@@ -92,8 +92,8 @@ clear
 
 systemctl restart ssh
 systemctl restart dropbear
-systemctl restart dropbear-ws
-systemctl restart dropbear-wss
+systemctl restart ws-dropbear
+systemctl restart ws-stunnel
 systemctl restart udp-custom
 systemctl restart udpgw
 

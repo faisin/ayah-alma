@@ -103,8 +103,9 @@ IP VPS       : $IP
 
 OpenSSH      : 22
 Dropbear     : 109, 143
-SSH WS       : 80 (/ssh-ws) atau 443 (/ssh-ws)
+SSH WS       : 443 (/ssh-ws)
 SSH WSS      : 443 (/ssh-wss)
+SSH SSL-only : 444 (TLS tanpa WebSocket)
 UdpSSH       : 1-65535
 BadVPN       : 7300
 
@@ -123,6 +124,11 @@ SSH WSS
 $DOMAIN:443@$user:$pass
 Path: /ssh-wss
 
+SSH SSL-only (TLS, tanpa WebSocket)
+Host: $DOMAIN
+Port: 444
+Mode: SSL/TLS langsung, tanpa payload dan tanpa WebSocket
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PAYLOAD WEBSOCKET
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -133,31 +139,12 @@ Upgrade: websocket[crlf]
 Connection: Upgrade[crlf]
 [crlf]
 
-GET CGI (SSH WS / WSS)
-GET /cdn-cgi/trace HTTP/1.1[crlf]
-Host: $DOMAIN[crlf]
-[crlf]
-
-X-Online-Host payload
-GET / HTTP/1.1[crlf]
-Host: $DOMAIN[crlf]
-X-Online-Host: $DOMAIN[crlf]
-Connection: Keep-Alive[crlf]
-[crlf]
-
-X-Real-Host payload
-GET / HTTP/1.1[crlf]
-Host: $DOMAIN[crlf]
-X-Real-Host: $DOMAIN:80[crlf]
-[crlf]
-
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PAYLOAD ENHANCED
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 GET / HTTP/1.1[crlf]
 Host: [host][crlf]
-X-Online-Host: [host][crlf]
 [crlf]
 PATCH / HTTP/1.1[crlf]
 Host: $DOMAIN[crlf]
