@@ -21,7 +21,10 @@
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": ["http", "tls"]
+        "destOverride": [
+          "http",
+          "tls"
+        ]
       },
       "tag": "vmess-ws-tls"
     },
@@ -41,7 +44,10 @@
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": ["http", "tls"]
+        "destOverride": [
+          "http",
+          "tls"
+        ]
       },
       "tag": "vmess-ws-nontls"
     },
@@ -61,7 +67,10 @@
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": ["http", "tls"]
+        "destOverride": [
+          "http",
+          "tls"
+        ]
       },
       "tag": "vmess-grpc"
     },
@@ -82,7 +91,10 @@
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": ["http", "tls"]
+        "destOverride": [
+          "http",
+          "tls"
+        ]
       },
       "tag": "vless-ws-tls"
     },
@@ -103,7 +115,10 @@
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": ["http", "tls"]
+        "destOverride": [
+          "http",
+          "tls"
+        ]
       },
       "tag": "vless-ws-nontls"
     },
@@ -124,7 +139,10 @@
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": ["http", "tls"]
+        "destOverride": [
+          "http",
+          "tls"
+        ]
       },
       "tag": "vless-grpc"
     },
@@ -144,7 +162,10 @@
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": ["http", "tls"]
+        "destOverride": [
+          "http",
+          "tls"
+        ]
       },
       "tag": "trojan-ws-tls"
     },
@@ -164,7 +185,10 @@
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": ["http", "tls"]
+        "destOverride": [
+          "http",
+          "tls"
+        ]
       },
       "tag": "trojan-ws-nontls"
     },
@@ -184,7 +208,10 @@
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": ["http", "tls"]
+        "destOverride": [
+          "http",
+          "tls"
+        ]
       },
       "tag": "trojan-grpc"
     },
@@ -205,7 +232,10 @@
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": ["http", "tls"]
+        "destOverride": [
+          "http",
+          "tls"
+        ]
       },
       "tag": "ssws-ws-tls"
     },
@@ -226,7 +256,10 @@
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": ["http", "tls"]
+        "destOverride": [
+          "http",
+          "tls"
+        ]
       },
       "tag": "ssws-ws-nontls"
     },
@@ -247,100 +280,12 @@
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": ["http", "tls"]
+        "destOverride": [
+          "http",
+          "tls"
+        ]
       },
       "tag": "ssws-grpc"
-    },
-    {
-      "listen": "127.0.0.1",
-      "port": 10001,
-      "protocol": "vmess",
-      "settings": {
-        "clients": []
-      },
-      "streamSettings": {
-        "network": "tcp",
-        "security": "tls",
-        "tlsSettings": {
-          "certificates": [
-            {
-              "certificateFile": "/etc/xray/cert.crt",
-              "keyFile": "/etc/xray/private.key"
-            }
-          ]
-        },
-        "tcpSettings": {
-          "header": {
-            "type": "none"
-          }
-        }
-      },
-      "sniffing": {
-        "enabled": true,
-        "destOverride": ["http", "tls"]
-      },
-      "tag": "vmess-tcp-tls"
-    },
-    {
-      "listen": "127.0.0.1",
-      "port": 10002,
-      "protocol": "vless",
-      "settings": {
-        "clients": [],
-        "decryption": "none"
-      },
-      "streamSettings": {
-        "network": "tcp",
-        "security": "tls",
-        "tlsSettings": {
-          "certificates": [
-            {
-              "certificateFile": "/etc/xray/cert.crt",
-              "keyFile": "/etc/xray/private.key"
-            }
-          ]
-        },
-        "tcpSettings": {
-          "header": {
-            "type": "none"
-          }
-        }
-      },
-      "sniffing": {
-        "enabled": true,
-        "destOverride": ["http", "tls"]
-      },
-      "tag": "vless-tcp-tls"
-    },
-    {
-      "listen": "127.0.0.1",
-      "port": 10003,
-      "protocol": "trojan",
-      "settings": {
-        "clients": []
-      },
-      "streamSettings": {
-        "network": "tcp",
-        "security": "tls",
-        "tlsSettings": {
-          "certificates": [
-            {
-              "certificateFile": "/etc/xray/cert.crt",
-              "keyFile": "/etc/xray/private.key"
-            }
-          ]
-        },
-        "tcpSettings": {
-          "header": {
-            "type": "none"
-          }
-        }
-      },
-      "sniffing": {
-        "enabled": true,
-        "destOverride": ["http", "tls"]
-      },
-      "tag": "trojan-tcp-tls"
     },
     {
       "listen": "127.0.0.1",
@@ -359,7 +304,10 @@
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": ["http", "tls"]
+        "destOverride": [
+          "http",
+          "tls"
+        ]
       },
       "tag": "vless-httpupgrade"
     },
@@ -379,7 +327,10 @@
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": ["http", "tls"]
+        "destOverride": [
+          "http",
+          "tls"
+        ]
       },
       "tag": "vmess-httpupgrade"
     },
@@ -399,7 +350,10 @@
       },
       "sniffing": {
         "enabled": true,
-        "destOverride": ["http", "tls"]
+        "destOverride": [
+          "http",
+          "tls"
+        ]
       },
       "tag": "trojan-httpupgrade"
     }
