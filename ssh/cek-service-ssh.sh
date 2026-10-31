@@ -21,11 +21,17 @@ else
     echo " [✗] OpenSSH  : Not Running (Dead)"
 fi
 
-# Cek status Websocket (jika menggunakan layanan python/stunnel/ws)
-if systemctl is-active --quiet ws-stunnel || systemctl is-active --quiet ssh-ws; then
+# Cek status SSH WebSocket dan WSS
+if systemctl is-active --quiet dropbear-ws; then
+    echo " [✓] SSH WS   : Running"
+else
+    echo " [✗] SSH WS   : Not Running"
+fi
+
+if systemctl is-active --quiet dropbear-wss; then
     echo " [✓] SSH WSS  : Running"
 else
-    echo " [!] SSH WSS  : Check Manual / Not Active"
+    echo " [✗] SSH WSS  : Not Running"
 fi
 
 echo ""
