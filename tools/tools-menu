@@ -11,7 +11,7 @@ clear
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${CYAN}                 ⚙️ MENU TOOLS                  ${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${GREEN}[1]${NC} Backup & Restore Config"
+echo -e "${GREEN}[1]${NC} Port Change Manager"
 echo -e "${GREEN}[2]${NC} Speedtest VPS"
 echo -e "${GREEN}[3]${NC} Ganti Domain XRAY"
 echo -e "${GREEN}[4]${NC} Cek status layanan aktif"
@@ -22,7 +22,7 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 read -p "👉 Pilih opsi: " opt
 
 case $opt in
-1) bash /etc/ayah-alma/tools/backup.sh ;;
+1) bash /etc/ayah-alma/tools/port-change.sh ;;
 2) bash /etc/ayah-alma/tools/speedtest.sh ;;
 3) bash /etc/ayah-alma/tools/domain.sh ;;
 4) bash /usr/bin/running ;;
