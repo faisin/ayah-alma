@@ -33,8 +33,8 @@ while IFS= read -r -d '' f; do
   if bash -n "$f" 2>/tmp/ayah-alma-bash-check.err; then :; else
     fail "Sintaks Bash: $f ($(tr '\n' ' ' </tmp/ayah-alma-bash-check.err))"
   fi
-done < <(find . -type f -name '*.sh' ! -path './menu1.sh' -print0)
-if (( SHELL_COUNT > 0 )); then ok "bash -n: $SHELL_COUNT file .sh diperiksa (menu1.sh cadangan dikecualikan)"; else warn 'Tidak ada file .sh yang ditemukan'; fi
+done < <(find . -type f -name '*.sh' -print0)
+if (( SHELL_COUNT > 0 )); then ok "bash -n: $SHELL_COUNT file .sh diperiksa"; else warn 'Tidak ada file .sh yang ditemukan'; fi
 rm -f /tmp/ayah-alma-bash-check.err
 
 section 'Sintaks Python'
@@ -118,12 +118,34 @@ fi
 
 if [[ "$MODE" == '--post-install' ]]; then
   section 'Status layanan setelah instalasi'
-  for svc in nginx xray haproxy ssh dropbear dropbear-ws stunnel-ws ayah-ssh-ssl udpgw udp-custom wg-quick@wg0 zivpn; do
+  for svc in nginx xray haproxy ssh dropbear dropbear-ws dropbear-wss udpgw udp-custom wg-quick@wg0 zivpn; do
     if systemctl is-active --quiet "$svc" 2>/dev/null; then ok "service aktif: $svc"; else fail "service tidak aktif: $svc (lihat: journalctl -u $svc -n 80 --no-pager)"; fi
   done
   if command -v xray >/dev/null 2>&1 && [[ -s /etc/xray/config.json ]]; then
     if xray -test -config /etc/xray/config.json; then ok 'Konfigurasi Xray valid'; else fail 'Validasi konfigurasi Xray gagal'; fi
   else warn 'Binary xray atau /etc/xray/config.json tidak ditemukan; validasi Xray dilewati'; fi
+  section 'Audit alur port AYAH ALMA'
+  if command -v ss >/dev/null 2>&1; then
+    listener_has() {
+      local port="$1" process="$2" out
+      out="$(ss -H -lntp "sport = :$port" 2>/dev/null || true)"
+      [[ -n "$out" ]] && grep -q "$process" <<<"$out"
+    }
+    for port in 80 443; do
+      out="$(ss -H -lntp "sport = :$port" 2>/dev/null || true)"
+      if [[ -n "$out" ]] && ! grep -qv haproxy <<<"$out"; then ok "port publik $port hanya dimiliki HAProxy"; else fail "port publik $port bukan eksklusif HAProxy"; fi
+    done
+    listener_has 8080 nginx && ok 'Nginx backend 8080 aktif' || fail 'Nginx backend 127.0.0.1:8080 tidak aktif'
+    listener_has 109 dropbear && ok 'Dropbear port 109 aktif' || fail 'Dropbear port 109 tidak aktif'
+    listener_has 143 dropbear && ok 'Dropbear port 143 aktif' || fail 'Dropbear port 143 tidak aktif'
+    listener_has 2082 dropbearws && ok 'SSH WS bridge 2082 aktif' || fail 'SSH WS bridge 2082 tidak aktif'
+    listener_has 2096 dropbearwss && ok 'SSH WSS bridge 2096 aktif' || fail 'SSH WSS bridge 2096 tidak aktif'
+  else
+    warn 'ss tidak tersedia; audit listener dilewati'
+  fi
+  if command -v jq >/dev/null 2>&1 && [[ -s /etc/xray/config.json ]]; then
+    if jq -e 'all(.inbounds[]; .listen == "127.0.0.1") and (([.inbounds[].port] | length) == ([.inbounds[].port] | unique | length)) and all(.inbounds[]; .port != 22 and .port != 80 and .port != 443 and .port != 109 and .port != 143 and .port != 2082 and .port != 2096 and .port != 8080)' /etc/xray/config.json >/dev/null; then ok 'Semua inbound Xray loopback dan tidak bentrok'; else fail 'Inbound Xray tidak loopback atau port bentrok'; fi
+  else warn 'jq atau konfigurasi Xray tidak tersedia; audit bind Xray dilewati'; fi
   section 'Port yang sedang listen (diagnostik)'
   if command -v ss >/dev/null 2>&1; then ss -lntup; else warn 'Perintah ss tidak tersedia'; fi
   section 'Catatan firewall provider'
