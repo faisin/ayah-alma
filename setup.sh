@@ -172,6 +172,7 @@ required=(
     internal/go/dropbear-ws.service
     internal/go/stunnel-ws/main.go
     internal/go/stunnel-ws.service
+    internal/go/go.mod
     menu.sh
     uninstall.sh
     clearcache
@@ -500,7 +501,6 @@ services=(
     dropbear
     dropbear-ws
     stunnel-ws
-    ayah-ssh-ssl
     udpgw
     udp-custom
     wg-quick@wg0
