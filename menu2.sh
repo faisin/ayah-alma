@@ -120,7 +120,7 @@ show_dashboard() {
     printf ' %b%-13s%b : ' "$C_CYAN" 'WireGuard' "$C_RESET"; service_state wg-quick@wg0; printf '\n'
     printf ' %b%-13s%b : ' "$C_CYAN" 'Dropbear' "$C_RESET"; service_state dropbear; printf '\n'
     printf ' %b%-13s%b : ' "$C_CYAN" 'Dropbear WS' "$C_RESET"; service_state dropbear-ws; printf '\n'
-    printf ' %b%-13s%b : ' "$C_CYAN" 'SSH WSS' "$C_RESET"; service_state dropbear-wss; printf '\n'
+    printf ' %b%-13s%b : ' "$C_CYAN" 'Stunnel WS' "$C_RESET"; service_state stunnel-ws; printf '\n'
     printf ' %b%-13s%b : ' "$C_CYAN" 'UDP Custom' "$C_RESET"; service_state udp-custom; printf '\n'
     printf ' %b%-13s%b : ' "$C_CYAN" 'ZIVPN' "$C_RESET"; service_state zivpn; printf '\n'
 

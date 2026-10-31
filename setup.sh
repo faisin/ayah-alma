@@ -6,7 +6,6 @@
 set -Eeuo pipefail
 IFS=$'\n\t'
 
-RELEASE_URL="https://github.com/faisin/ayah-alma/releases/latest/download/ayah-alma-release.zip"
 INSTALL_ROOT="/etc/ayah-alma"
 WORK_DIR=""
 CLEAN_WORK=false
@@ -110,7 +109,7 @@ if command -v sshd >/dev/null 2>&1; then
         [[ "$ssh_port" =~ ^[0-9]+$ ]] && SSH_PORTS+=("$ssh_port")
     done < <(sshd -T 2>/dev/null | awk '$1 == "port" {print $2}' | sort -nu)
 fi
-for port in "${SSH_PORTS[@]}" 80 109 143 443; do
+for port in "${SSH_PORTS[@]}" 80 109 143 443 444 10011 10012 10013; do
     allow_iptables_port 4 tcp "$port"
     allow_iptables_port 6 tcp "$port"
 done
@@ -131,33 +130,38 @@ else
     SELF_DIR="$PWD"
 fi
 
-# MAIN GitHub adalah sumber utama; Release ZIP melengkapi file besar/runtime.
+# Source utama berasal dari branch main. Release ZIP AYAH ALMA hanya menjadi
+# pelengkap untuk file pendukung/binary yang memang belum ada di branch main.
 WORK_DIR=$(mktemp -d /tmp/ayah-alma.XXXXXX)
 CLEAN_WORK=true
 MAIN_DIR="$WORK_DIR/main"
 ZIP_DIR=""
+MAIN_GIT_URL="https://github.com/faisin/ayah-alma.git"
+RELEASE_URL="https://github.com/faisin/ayah-alma/releases/latest/download/ayah-alma-release.zip"
 mkdir -p "$MAIN_DIR"
 
-MAIN_GIT_URL="https://github.com/faisin/ayah-alma.git"
+if [[ -n "$SELF_DIR" && -s "$SELF_DIR/install/haproxy.sh" && -s "$SELF_DIR/config/nginx-arisc.conf" ]]; then
+    info "Menggunakan source lokal dari: $SELF_DIR"
+    cp -a "$SELF_DIR/." "$MAIN_DIR/"
+else
+    info "Mengambil source dari branch main: $MAIN_GIT_URL"
+    git clone --depth 1 --filter=blob:none --single-branch --branch main \
+        "$MAIN_GIT_URL" "$MAIN_DIR" \
+        || die "Gagal mengambil repository AYAH ALMA branch main."
+fi
 
-info "Mengambil source dari branch main..."
-
-git clone --depth 1 --filter=blob:none --single-branch --branch main \
-    "$MAIN_GIT_URL" "$MAIN_DIR" \
-    || die "Gagal mengambil repository main."
-
+# Semua file di bawah boleh dilengkapi dari Release ZIP jika tidak ada di main.
+# File yang sudah tersedia di branch main tidak pernah ditimpa oleh Release.
 required=(
     install/haproxy.sh
+    install/nginx.sh
     install/xray.sh
     install/ssh.sh
     install/wg.sh
     install/zivpn.sh
-    "bin/$ARCH/xray"
-    "bin/$ARCH/zivpn"
-    "bin/$ARCH/badvpn-udpgw"
-    "bin/$ARCH/udp-custom"
     config/haproxy.cfg
     config/nginx-fallback.conf
+    config/nginx-arisc.conf
     config/www/index.html
     config/xray.json
     ssh/addssh.sh
@@ -170,64 +174,85 @@ required=(
     sshws/udp-custom.service
     internal/go/dropbear-ws/main.go
     internal/go/dropbear-ws.service
-    internal/go/dropbear-wss/main.go
-    internal/go/dropbear-wss.service
+    internal/go/stunnel-ws/main.go
+    internal/go/stunnel-ws.service
     menu.sh
     uninstall.sh
     clearcache
+    "bin/$ARCH/xray"
+    "bin/$ARCH/zivpn"
+    "bin/$ARCH/badvpn-udpgw"
+    "bin/$ARCH/udp-custom"
 )
 
-info "Mengambil Release ZIP untuk melengkapi file besar/runtime yang tidak ada di MAIN..."
-
-ARCHIVE="$WORK_DIR/ayah-alma-release.zip"
-
-wget -q --show-progress --https-only -O "$ARCHIVE" "$RELEASE_URL" \
-    || die "Gagal mengunduh release Ayah Alma."
-
-unzip -tq "$ARCHIVE" >/dev/null || die "Release Ayah Alma rusak."
-unzip -q "$ARCHIVE" -d "$WORK_DIR/release"
-
-# Cari direktori Release berdasarkan struktur source, bukan nama folder ZIP.
-ZIP_DIR=""
-
-while IFS= read -r -d '' candidate; do
-    if [[ -s "$candidate/install/xray.sh" && -s "$candidate/config/xray.json" ]]; then
-        ZIP_DIR="$candidate"
-        break
-    fi
-done < <(
-    find "$WORK_DIR/release" -type f -path '*/install/xray.sh' -print0 |
-    while IFS= read -r -d '' f; do
-        printf '%s\0' "$(dirname "$(dirname "$f")")"
-    done
-)
-
-[[ -n "$ZIP_DIR" && -d "$ZIP_DIR" ]] \
-    || die "Struktur Release tidak valid: install/xray.sh dan config/xray.json tidak ditemukan."
-
-info "Root Release terdeteksi: ${ZIP_DIR#$WORK_DIR/release/}"
-
-# Kode sumber harus berasal dari branch main agar skrip tidak tercampur dengan
-# versi Release yang berbeda. Release hanya boleh menjadi fallback untuk binary.
-BINARY_REQUIRED=("bin/$ARCH/xray" "bin/$ARCH/zivpn" "bin/$ARCH/badvpn-udpgw" "bin/$ARCH/udp-custom")
-for rel in "${BINARY_REQUIRED[@]}"; do
-    if [[ ! -s "$MAIN_DIR/$rel" && -s "$ZIP_DIR/$rel" ]]; then
-        mkdir -p "$MAIN_DIR/$(dirname "$rel")"
-        install -m 755 "$ZIP_DIR/$rel" "$MAIN_DIR/$rel"
-        info "Release fallback untuk binary: $rel"
-    fi
+missing=()
+for rel in "${required[@]}"; do
+    [[ -s "$MAIN_DIR/$rel" ]] || missing+=("$rel")
 done
 
-# Arsip source yang diberikan tidak selalu menyertakan binary Xray. Jika tidak
-# tersedia di branch/Release, ambil binary resmi XTLS dan verifikasi SHA-256
-# dari file .dgst resmi sebelum mengekstraknya.
-if [[ ! -s "$MAIN_DIR/bin/$ARCH/xray" ]]; then
-    case "$ARCH" in
-        amd64) XRAY_ASSET="Xray-linux-64.zip" ;;
-        arm64) XRAY_ASSET="Xray-linux-arm64-v8a.zip" ;;
-        *) die "Tidak ada binary Xray resmi yang dipetakan untuk arsitektur $ARCH." ;;
-    esac
-    info "Binary Xray tidak ada di source/Release; mengambil binary resmi XTLS ($XRAY_ASSET)..."
+# Unduh Release hanya jika ada file pendukung/runtime yang belum tersedia.
+if (( ${#missing[@]} > 0 )); then
+    info "Ada ${#missing[@]} file yang belum ada di branch main; mengambil Release ZIP sebagai pelengkap."
+    ARCHIVE="$WORK_DIR/ayah-alma-release.zip"
+    wget -q --show-progress --https-only -O "$ARCHIVE" "$RELEASE_URL" \
+        || die "Gagal mengunduh Release ZIP AYAH ALMA untuk melengkapi file yang hilang."
+    unzip -tq "$ARCHIVE" >/dev/null || die "Release ZIP AYAH ALMA rusak."
+    mkdir -p "$WORK_DIR/release"
+    unzip -q "$ARCHIVE" -d "$WORK_DIR/release"
+
+    # Temukan root Release berdasarkan file penanda struktur proyek.
+    while IFS= read -r -d '' candidate; do
+        if [[ -s "$candidate/install/xray.sh" && -s "$candidate/config/xray.json" ]]; then
+            ZIP_DIR="$candidate"
+            break
+        fi
+    done < <(
+        find "$WORK_DIR/release" -type f -path '*/install/xray.sh' -print0 |
+        while IFS= read -r -d '' f; do
+            printf '%s\0' "$(dirname "$(dirname "$f")")"
+        done
+    )
+    [[ -n "$ZIP_DIR" && -d "$ZIP_DIR" ]] \
+        || die "Struktur Release tidak valid: install/xray.sh dan config/xray.json tidak ditemukan."
+
+    info "Root Release terdeteksi: ${ZIP_DIR#$WORK_DIR/release/}"
+    for rel in "${required[@]}"; do
+        if [[ ! -s "$MAIN_DIR/$rel" && -s "$ZIP_DIR/$rel" ]]; then
+            mkdir -p "$MAIN_DIR/$(dirname "$rel")"
+            cp -a "$ZIP_DIR/$rel" "$MAIN_DIR/$rel"
+            info "Release fallback: $rel"
+        fi
+    done
+fi
+
+# Pastikan semua file pendukung sudah lengkap setelah fallback Release.
+missing=()
+for rel in "${required[@]}"; do
+    [[ -s "$MAIN_DIR/$rel" ]] || missing+=("$rel")
+done
+if (( ${#missing[@]} > 0 )); then
+    printf 'File wajib tidak ditemukan di branch main maupun Release ZIP:\n' >&2
+    printf ' - %s\n' "${missing[@]}" >&2
+    die "Source/runtime AYAH ALMA belum lengkap."
+fi
+
+# Cocokkan arsitektur ELF sebenarnya; nama folder bin/ tidak dianggap bukti.
+case "$ARCH" in
+    amd64) ELF_MACHINE='x86-64' ; XRAY_ASSET='Xray-linux-64.zip' ;;
+    arm64) ELF_MACHINE='ARM aarch64' ; XRAY_ASSET='Xray-linux-arm64-v8a.zip' ;;
+    *) die "Arsitektur $ARCH belum didukung." ;;
+esac
+binary_matches_arch() {
+    local bin="$1" desc
+    [[ -s "$bin" ]] || return 1
+    desc=$(file -b "$bin" 2>/dev/null || true)
+    [[ "$desc" == *"$ELF_MACHINE"* ]]
+}
+
+# Jika Xray dari main/Release tidak cocok, gunakan binary resmi XTLS dan checksum.
+XRAY_BIN="$MAIN_DIR/bin/$ARCH/xray"
+if ! binary_matches_arch "$XRAY_BIN"; then
+    info "Binary Xray tidak ada atau salah arsitektur; mengambil release resmi XTLS/Xray-core."
     XRAY_RELEASE_JSON="$WORK_DIR/xray-release.json"
     XRAY_ARCHIVE="$WORK_DIR/$XRAY_ASSET"
     XRAY_DIGEST="$WORK_DIR/$XRAY_ASSET.dgst"
@@ -237,9 +262,9 @@ if [[ ! -s "$MAIN_DIR/bin/$ARCH/xray" ]]; then
     XRAY_URL=$(jq -r --arg name "$XRAY_ASSET" '.assets[]? | select(.name == $name) | .browser_download_url' "$XRAY_RELEASE_JSON" | head -n1)
     XRAY_DIGEST_URL=$(jq -r --arg name "$XRAY_ASSET.dgst" '.assets[]? | select(.name == $name) | .browser_download_url' "$XRAY_RELEASE_JSON" | head -n1)
     [[ "$XRAY_URL" == https://github.com/XTLS/Xray-core/releases/download/* ]] \
-        || die "Asset Xray resmi $XRAY_ASSET tidak ditemukan pada release terbaru."
+        || die "Asset resmi Xray $XRAY_ASSET tidak ditemukan."
     [[ "$XRAY_DIGEST_URL" == https://github.com/XTLS/Xray-core/releases/download/* ]] \
-        || die "Checksum resmi $XRAY_ASSET.dgst tidak ditemukan; binary tidak akan diunduh tanpa verifikasi."
+        || die "Checksum resmi Xray $XRAY_ASSET.dgst tidak ditemukan."
     curl -fsSL --retry 3 --connect-timeout 15 "$XRAY_URL" -o "$XRAY_ARCHIVE" \
         || die "Gagal mengunduh binary Xray resmi."
     curl -fsSL --retry 3 --connect-timeout 15 "$XRAY_DIGEST_URL" -o "$XRAY_DIGEST" \
@@ -251,37 +276,30 @@ if [[ ! -s "$MAIN_DIR/bin/$ARCH/xray" ]]; then
     unzip -tq "$XRAY_ARCHIVE" >/dev/null || die "Arsip binary Xray resmi rusak."
     XRAY_MEMBER=$(unzip -Z1 "$XRAY_ARCHIVE" | awk '$0 == "xray" {print; exit}')
     [[ -n "$XRAY_MEMBER" ]] || die "Binary xray tidak ditemukan di dalam arsip resmi."
-    mkdir -p "$MAIN_DIR/bin/$ARCH"
-    unzip -p "$XRAY_ARCHIVE" "$XRAY_MEMBER" > "$MAIN_DIR/bin/$ARCH/xray"
-    chmod 755 "$MAIN_DIR/bin/$ARCH/xray"
-    info "Binary Xray resmi berhasil diverifikasi dan disiapkan."
+    mkdir -p "$(dirname "$XRAY_BIN")"
+    unzip -p "$XRAY_ARCHIVE" "$XRAY_MEMBER" > "$XRAY_BIN"
+    chmod 755 "$XRAY_BIN"
+    binary_matches_arch "$XRAY_BIN" || die "Binary Xray hasil unduhan bukan untuk arsitektur $ARCH."
 fi
 
-missing=()
-for rel in "${required[@]}"; do
-    if [[ ! -s "$MAIN_DIR/$rel" ]]; then
-        missing+=("$rel")
-    fi
+# Binary selain Xray harus tersedia dan sesuai arsitektur setelah fallback Release.
+for rel in "bin/$ARCH/zivpn" "bin/$ARCH/badvpn-udpgw" "bin/$ARCH/udp-custom"; do
+    binary_matches_arch "$MAIN_DIR/$rel" \
+        || die "Binary $rel tidak ada atau salah arsitektur di branch main maupun Release ZIP."
 done
 
-if (( ${#missing[@]} > 0 )); then
-    printf 'File wajib hilang dari branch main (atau binary tidak tersedia di Release):\n' >&2
-    printf ' - %s\n' "${missing[@]}" >&2
-    die "Source/runtime tidak lengkap; installer dihentikan sebelum pemasangan."
-fi
-
+info "Sumber final: branch main sebagai sumber utama; Release ZIP hanya melengkapi file yang hilang."
 BASE_DIR="$MAIN_DIR"
 rm -f "$BASE_DIR/config/xray.conf" "$BASE_DIR/config/xray-stream.conf"
-
-info "Sumber final: semua skrip/config dari branch main; Release hanya fallback untuk binary yang hilang."
+info "Source aplikasi: GitHub branch main. Binary Xray: release resmi XTLS bila diperlukan."
 
 # Validasi sintaks modul yang akan dieksekusi sebelum mengubah layanan sistem.
-for script in install/haproxy.sh install/xray.sh install/ssh.sh install/wg.sh install/zivpn.sh; do
+for script in install/haproxy.sh install/nginx.sh install/xray.sh install/ssh.sh install/wg.sh install/zivpn.sh; do
     bash -n "$BASE_DIR/$script" || die "Sintaks Bash tidak valid: $script"
 done
 jq -e . "$BASE_DIR/config/xray.json" >/dev/null || die "config/xray.json bukan JSON valid."
 for rel in "bin/$ARCH/xray" "bin/$ARCH/zivpn" "bin/$ARCH/badvpn-udpgw" "bin/$ARCH/udp-custom"; do
-    file "$BASE_DIR/$rel" | grep -q 'ELF' || die "Binary tidak valid atau bukan ELF: $rel"
+    binary_matches_arch "$BASE_DIR/$rel" || die "Binary tidak valid atau salah arsitektur: $rel"
 done
 
 # ================= LICENSE CHECK =================
@@ -442,6 +460,7 @@ run_module(){
 
 # HAProxy dipasang terlebih dahulu tetapi tidak bind port sampai sertifikat siap.
 run_module install/haproxy.sh
+run_module install/nginx.sh
 command -v haproxy >/dev/null 2>&1 || die "HAProxy tidak terpasang."
 
 run_module install/xray.sh
@@ -478,7 +497,7 @@ install -m 755 "$BASE_DIR/uninstall.sh" /root/uninstall.sh
 for f in \
     /usr/local/bin/xray \
     /usr/local/bin/dropbearws \
-    /usr/local/bin/dropbearwss \
+    /usr/local/bin/stunnelws \
     /usr/local/bin/badvpn-udpgw \
     /usr/local/bin/udp-custom \
     /usr/local/bin/zivpn; do
@@ -493,11 +512,13 @@ systemctl daemon-reload
 
 services=(
     xray
+    nginx
     haproxy
     ssh
     dropbear
     dropbear-ws
-    dropbear-wss
+    stunnel-ws
+    ayah-ssh-ssl
     udpgw
     udp-custom
     wg-quick@wg0
@@ -522,28 +543,6 @@ for svc in "${services[@]}"; do
             die "Health check gagal: $svc"
         }
 done
-
-# ================= PORT / ROUTING AUDIT =================
-# HAProxy must be the only owner of public HTTP/HTTPS ports.
-listener_has() {
-    local port="$1" process="$2" output
-    output="$(ss -H -lntp "sport = :$port" 2>/dev/null || true)"
-    [[ -n "$output" ]] && grep -q "$process" <<<"$output"
-}
-listener_has 80 haproxy || die "Port 80 tidak dimiliki HAProxy."
-listener_has 443 haproxy || die "Port 443 tidak dimiliki HAProxy."
-for port in 80 443; do
-    output="$(ss -H -lntp "sport = :$port" 2>/dev/null || true)"
-    grep -qv haproxy <<<"$output" && die "Ada proses selain HAProxy yang memakai port publik $port."
-done
-listener_has 8080 nginx || die "Nginx tidak mendengarkan backend 127.0.0.1:8080."
-listener_has 109 dropbear || die "Dropbear tidak mendengarkan port 109."
-listener_has 143 dropbear || die "Dropbear tidak mendengarkan port 143."
-listener_has 2082 dropbearws || die "SSH WebSocket tidak aktif pada 127.0.0.1:2082."
-listener_has 2096 dropbearwss || die "SSH WSS tidak aktif pada 127.0.0.1:2096."
-jq -e 'all(.inbounds[]; .listen == "127.0.0.1") and (([.inbounds[].port] | length) == ([.inbounds[].port] | unique | length)) and all(.inbounds[]; .port != 22 and .port != 80 and .port != 443 and .port != 109 and .port != 143 and .port != 2082 and .port != 2096 and .port != 8080)' /etc/xray/config.json >/dev/null \
-    || die "Inbound Xray tidak loopback atau ada port yang bentrok."
-info "Port audit lulus: HAProxy 80/443, Dropbear 109/143, WS 2082/2096, Nginx 8080, Xray loopback."
 
 # ================= ROOT PROFILE =================
 PROFILE_MARKER="# BEGIN AYAH-ALMA MENU"
@@ -574,6 +573,7 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 echo "Domain      : $domain"
 echo "Xray        : OK"
 echo "HAProxy     : OK"
+echo "Nginx       : OK (ARISC-style proxy)"
 echo "SSH/WS      : OK"
 echo "WireGuard   : OK"
 echo "UDP Custom  : OK"

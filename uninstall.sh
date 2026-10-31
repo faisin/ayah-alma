@@ -66,9 +66,7 @@ services=(
     wg-quick@wg0
     zivpn
     dropbear-ws
-    dropbear-wss
     stunnel-ws
-    ayah-ssh-ssl
 )
 
 for svc in "${services[@]}"; do
@@ -91,7 +89,7 @@ rm -f /etc/systemd/system/udp-custom.service
 rm -f /etc/systemd/system/udpgw.service
 rm -f /etc/systemd/system/zivpn.service
 rm -f /etc/systemd/system/dropbear-ws.service
-rm -f /etc/systemd/system/stunnel-ws.service /etc/systemd/system/dropbear-wss.service /etc/systemd/system/ayah-ssh-ssl.service
+rm -f /etc/systemd/system/stunnel-ws.service
 
 rm -f /etc/systemd/system/acme*.service
 rm -f /etc/systemd/system/acme*.timer
@@ -112,7 +110,7 @@ rm -f /usr/local/bin/udp-custom
 rm -f /usr/local/bin/badvpn-udpgw
 rm -f /usr/local/bin/zivpn
 rm -f /usr/local/bin/dropbearws
-rm -f /usr/local/bin/stunnelws /usr/local/bin/dropbearwss
+rm -f /usr/local/bin/stunnelws
 
 # ================= REMOVE CONFIG =================
 
@@ -126,7 +124,7 @@ rm -rf /etc/ayah-alma
 rm -rf /etc/autoscriptvpn
 rm -rf /etc/udp-custom
 
-rm -f /etc/nginx/conf.d/xray.conf /etc/nginx/conf.d/acme-bootstrap.conf
+rm -f /etc/nginx/conf.d/xray.conf /etc/nginx/conf.d/acme-bootstrap.conf /etc/nginx/conf.d/ayah-alma-arisc.conf
 rm -f /etc/haproxy/haproxy.cfg
 rm -rf /etc/haproxy/certs
 
