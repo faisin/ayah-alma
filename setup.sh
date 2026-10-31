@@ -6,6 +6,7 @@
 set -Eeuo pipefail
 IFS=$'\n\t'
 
+RELEASE_URL="https://github.com/faisin/ayah-alma/releases/latest/download/ayah-alma-release.zip"
 INSTALL_ROOT="/etc/ayah-alma"
 WORK_DIR=""
 CLEAN_WORK=false
@@ -130,38 +131,33 @@ else
     SELF_DIR="$PWD"
 fi
 
-# Source utama berasal dari branch main. Release ZIP AYAH ALMA hanya menjadi
-# pelengkap untuk file pendukung/binary yang memang belum ada di branch main.
+# MAIN GitHub adalah sumber utama; Release ZIP melengkapi file besar/runtime.
 WORK_DIR=$(mktemp -d /tmp/ayah-alma.XXXXXX)
 CLEAN_WORK=true
 MAIN_DIR="$WORK_DIR/main"
 ZIP_DIR=""
-MAIN_GIT_URL="https://github.com/faisin/ayah-alma.git"
-RELEASE_URL="https://github.com/faisin/ayah-alma/releases/latest/download/ayah-alma-release.zip"
 mkdir -p "$MAIN_DIR"
 
-if [[ -n "$SELF_DIR" && -s "$SELF_DIR/install/haproxy.sh" && -s "$SELF_DIR/config/nginx-arisc.conf" ]]; then
-    info "Menggunakan source lokal dari: $SELF_DIR"
-    cp -a "$SELF_DIR/." "$MAIN_DIR/"
-else
-    info "Mengambil source dari branch main: $MAIN_GIT_URL"
-    git clone --depth 1 --filter=blob:none --single-branch --branch main \
-        "$MAIN_GIT_URL" "$MAIN_DIR" \
-        || die "Gagal mengambil repository AYAH ALMA branch main."
-fi
+MAIN_GIT_URL="https://github.com/faisin/ayah-alma.git"
 
-# Semua file di bawah boleh dilengkapi dari Release ZIP jika tidak ada di main.
-# File yang sudah tersedia di branch main tidak pernah ditimpa oleh Release.
+info "Mengambil source dari branch main..."
+
+git clone --depth 1 --filter=blob:none --single-branch --branch main \
+    "$MAIN_GIT_URL" "$MAIN_DIR" \
+    || die "Gagal mengambil repository main."
+
 required=(
     install/haproxy.sh
-    install/nginx.sh
     install/xray.sh
     install/ssh.sh
     install/wg.sh
     install/zivpn.sh
+    "bin/$ARCH/xray"
+    "bin/$ARCH/zivpn"
+    "bin/$ARCH/badvpn-udpgw"
+    "bin/$ARCH/udp-custom"
     config/haproxy.cfg
     config/nginx-fallback.conf
-    config/nginx-arisc.conf
     config/www/index.html
     config/xray.json
     ssh/addssh.sh
@@ -179,80 +175,61 @@ required=(
     menu.sh
     uninstall.sh
     clearcache
-    "bin/$ARCH/xray"
-    "bin/$ARCH/zivpn"
-    "bin/$ARCH/badvpn-udpgw"
-    "bin/$ARCH/udp-custom"
 )
 
-missing=()
+# Release ZIP hanya fallback bila ada file wajib yang tidak tersedia di branch main.
+# File yang sudah ada di main tidak pernah ditimpa oleh Release.
+missing_from_main=()
 for rel in "${required[@]}"; do
-    [[ -s "$MAIN_DIR/$rel" ]] || missing+=("$rel")
+    [[ -s "$MAIN_DIR/$rel" ]] || missing_from_main+=("$rel")
 done
 
-# Unduh Release hanya jika ada file pendukung/runtime yang belum tersedia.
-if (( ${#missing[@]} > 0 )); then
-    info "Ada ${#missing[@]} file yang belum ada di branch main; mengambil Release ZIP sebagai pelengkap."
+if (( ${#missing_from_main[@]} > 0 )); then
+    info "Ada ${#missing_from_main[@]} file wajib yang belum ada di main; mencoba Release ZIP sebagai fallback..."
     ARCHIVE="$WORK_DIR/ayah-alma-release.zip"
-    wget -q --show-progress --https-only -O "$ARCHIVE" "$RELEASE_URL" \
-        || die "Gagal mengunduh Release ZIP AYAH ALMA untuk melengkapi file yang hilang."
-    unzip -tq "$ARCHIVE" >/dev/null || die "Release ZIP AYAH ALMA rusak."
-    mkdir -p "$WORK_DIR/release"
-    unzip -q "$ARCHIVE" -d "$WORK_DIR/release"
+    if wget -q --show-progress --https-only -O "$ARCHIVE" "$RELEASE_URL"; then
+        unzip -tq "$ARCHIVE" >/dev/null || die "Release Ayah Alma rusak."
+        mkdir -p "$WORK_DIR/release"
+        unzip -q "$ARCHIVE" -d "$WORK_DIR/release"
 
-    # Temukan root Release berdasarkan file penanda struktur proyek.
-    while IFS= read -r -d '' candidate; do
-        if [[ -s "$candidate/install/xray.sh" && -s "$candidate/config/xray.json" ]]; then
-            ZIP_DIR="$candidate"
-            break
-        fi
-    done < <(
-        find "$WORK_DIR/release" -type f -path '*/install/xray.sh' -print0 |
-        while IFS= read -r -d '' f; do
-            printf '%s\0' "$(dirname "$(dirname "$f")")"
+        ZIP_DIR=""
+        while IFS= read -r -d '' candidate; do
+            if [[ -s "$candidate/install/xray.sh" && -s "$candidate/config/xray.json" ]]; then
+                ZIP_DIR="$candidate"
+                break
+            fi
+        done < <(
+            find "$WORK_DIR/release" -type f -path '*/install/xray.sh' -print0 |
+            while IFS= read -r -d '' f; do
+                printf '%s\0' "$(dirname "$(dirname "$f")")"
+            done
+        )
+        [[ -n "$ZIP_DIR" && -d "$ZIP_DIR" ]] || die "Struktur Release tidak valid."
+
+        for rel in "${missing_from_main[@]}"; do
+            if [[ ! -s "$MAIN_DIR/$rel" && -s "$ZIP_DIR/$rel" ]]; then
+                mkdir -p "$MAIN_DIR/$(dirname "$rel")"
+                cp -p "$ZIP_DIR/$rel" "$MAIN_DIR/$rel"
+                info "Release fallback: $rel"
+            fi
         done
-    )
-    [[ -n "$ZIP_DIR" && -d "$ZIP_DIR" ]] \
-        || die "Struktur Release tidak valid: install/xray.sh dan config/xray.json tidak ditemukan."
-
-    info "Root Release terdeteksi: ${ZIP_DIR#$WORK_DIR/release/}"
-    for rel in "${required[@]}"; do
-        if [[ ! -s "$MAIN_DIR/$rel" && -s "$ZIP_DIR/$rel" ]]; then
-            mkdir -p "$MAIN_DIR/$(dirname "$rel")"
-            cp -a "$ZIP_DIR/$rel" "$MAIN_DIR/$rel"
-            info "Release fallback: $rel"
-        fi
-    done
+    else
+        warn "Release ZIP tidak dapat diunduh; lanjut memeriksa apakah file wajib tersedia dari sumber resmi lain."
+    fi
+else
+    info "Semua file wajib tersedia di branch main; Release ZIP tidak diperlukan."
 fi
 
-# Pastikan semua file pendukung sudah lengkap setelah fallback Release.
-missing=()
-for rel in "${required[@]}"; do
-    [[ -s "$MAIN_DIR/$rel" ]] || missing+=("$rel")
-done
-if (( ${#missing[@]} > 0 )); then
-    printf 'File wajib tidak ditemukan di branch main maupun Release ZIP:\n' >&2
-    printf ' - %s\n' "${missing[@]}" >&2
-    die "Source/runtime AYAH ALMA belum lengkap."
-fi
-
-# Cocokkan arsitektur ELF sebenarnya; nama folder bin/ tidak dianggap bukti.
-case "$ARCH" in
-    amd64) ELF_MACHINE='x86-64' ; XRAY_ASSET='Xray-linux-64.zip' ;;
-    arm64) ELF_MACHINE='ARM aarch64' ; XRAY_ASSET='Xray-linux-arm64-v8a.zip' ;;
-    *) die "Arsitektur $ARCH belum didukung." ;;
-esac
-binary_matches_arch() {
-    local bin="$1" desc
-    [[ -s "$bin" ]] || return 1
-    desc=$(file -b "$bin" 2>/dev/null || true)
-    [[ "$desc" == *"$ELF_MACHINE"* ]]
-}
-
-# Jika Xray dari main/Release tidak cocok, gunakan binary resmi XTLS dan checksum.
-XRAY_BIN="$MAIN_DIR/bin/$ARCH/xray"
-if ! binary_matches_arch "$XRAY_BIN"; then
-    info "Binary Xray tidak ada atau salah arsitektur; mengambil release resmi XTLS/Xray-core."
+# Arsip source yang diberikan tidak selalu menyertakan binary Xray. Jika tidak
+# tersedia di branch/Release, ambil binary resmi XTLS dan verifikasi SHA-256
+# dari file .dgst resmi sebelum mengekstraknya.
+if [[ ! -s "$MAIN_DIR/bin/$ARCH/xray" ]]; then
+    case "$ARCH" in
+        amd64) XRAY_ASSET="Xray-linux-64.zip" ;;
+        arm64) XRAY_ASSET="Xray-linux-arm64-v8a.zip" ;;
+        *) die "Tidak ada binary Xray resmi yang dipetakan untuk arsitektur $ARCH." ;;
+    esac
+    info "Binary Xray tidak ada di source/Release; mengambil binary resmi XTLS ($XRAY_ASSET)..."
     XRAY_RELEASE_JSON="$WORK_DIR/xray-release.json"
     XRAY_ARCHIVE="$WORK_DIR/$XRAY_ASSET"
     XRAY_DIGEST="$WORK_DIR/$XRAY_ASSET.dgst"
@@ -262,9 +239,9 @@ if ! binary_matches_arch "$XRAY_BIN"; then
     XRAY_URL=$(jq -r --arg name "$XRAY_ASSET" '.assets[]? | select(.name == $name) | .browser_download_url' "$XRAY_RELEASE_JSON" | head -n1)
     XRAY_DIGEST_URL=$(jq -r --arg name "$XRAY_ASSET.dgst" '.assets[]? | select(.name == $name) | .browser_download_url' "$XRAY_RELEASE_JSON" | head -n1)
     [[ "$XRAY_URL" == https://github.com/XTLS/Xray-core/releases/download/* ]] \
-        || die "Asset resmi Xray $XRAY_ASSET tidak ditemukan."
+        || die "Asset Xray resmi $XRAY_ASSET tidak ditemukan pada release terbaru."
     [[ "$XRAY_DIGEST_URL" == https://github.com/XTLS/Xray-core/releases/download/* ]] \
-        || die "Checksum resmi Xray $XRAY_ASSET.dgst tidak ditemukan."
+        || die "Checksum resmi $XRAY_ASSET.dgst tidak ditemukan; binary tidak akan diunduh tanpa verifikasi."
     curl -fsSL --retry 3 --connect-timeout 15 "$XRAY_URL" -o "$XRAY_ARCHIVE" \
         || die "Gagal mengunduh binary Xray resmi."
     curl -fsSL --retry 3 --connect-timeout 15 "$XRAY_DIGEST_URL" -o "$XRAY_DIGEST" \
@@ -276,30 +253,37 @@ if ! binary_matches_arch "$XRAY_BIN"; then
     unzip -tq "$XRAY_ARCHIVE" >/dev/null || die "Arsip binary Xray resmi rusak."
     XRAY_MEMBER=$(unzip -Z1 "$XRAY_ARCHIVE" | awk '$0 == "xray" {print; exit}')
     [[ -n "$XRAY_MEMBER" ]] || die "Binary xray tidak ditemukan di dalam arsip resmi."
-    mkdir -p "$(dirname "$XRAY_BIN")"
-    unzip -p "$XRAY_ARCHIVE" "$XRAY_MEMBER" > "$XRAY_BIN"
-    chmod 755 "$XRAY_BIN"
-    binary_matches_arch "$XRAY_BIN" || die "Binary Xray hasil unduhan bukan untuk arsitektur $ARCH."
+    mkdir -p "$MAIN_DIR/bin/$ARCH"
+    unzip -p "$XRAY_ARCHIVE" "$XRAY_MEMBER" > "$MAIN_DIR/bin/$ARCH/xray"
+    chmod 755 "$MAIN_DIR/bin/$ARCH/xray"
+    info "Binary Xray resmi berhasil diverifikasi dan disiapkan."
 fi
 
-# Binary selain Xray harus tersedia dan sesuai arsitektur setelah fallback Release.
-for rel in "bin/$ARCH/zivpn" "bin/$ARCH/badvpn-udpgw" "bin/$ARCH/udp-custom"; do
-    binary_matches_arch "$MAIN_DIR/$rel" \
-        || die "Binary $rel tidak ada atau salah arsitektur di branch main maupun Release ZIP."
+missing=()
+for rel in "${required[@]}"; do
+    if [[ ! -s "$MAIN_DIR/$rel" ]]; then
+        missing+=("$rel")
+    fi
 done
 
-info "Sumber final: branch main sebagai sumber utama; Release ZIP hanya melengkapi file yang hilang."
+if (( ${#missing[@]} > 0 )); then
+    printf 'File wajib hilang dari branch main (atau binary tidak tersedia di Release):\n' >&2
+    printf ' - %s\n' "${missing[@]}" >&2
+    die "Source/runtime tidak lengkap; installer dihentikan sebelum pemasangan."
+fi
+
 BASE_DIR="$MAIN_DIR"
 rm -f "$BASE_DIR/config/xray.conf" "$BASE_DIR/config/xray-stream.conf"
-info "Source aplikasi: GitHub branch main. Binary Xray: release resmi XTLS bila diperlukan."
+
+info "Sumber final: branch main; Release hanya mengisi file wajib yang hilang dan tidak menimpa file main."
 
 # Validasi sintaks modul yang akan dieksekusi sebelum mengubah layanan sistem.
-for script in install/haproxy.sh install/nginx.sh install/xray.sh install/ssh.sh install/wg.sh install/zivpn.sh; do
+for script in install/haproxy.sh install/xray.sh install/ssh.sh install/wg.sh install/zivpn.sh; do
     bash -n "$BASE_DIR/$script" || die "Sintaks Bash tidak valid: $script"
 done
 jq -e . "$BASE_DIR/config/xray.json" >/dev/null || die "config/xray.json bukan JSON valid."
 for rel in "bin/$ARCH/xray" "bin/$ARCH/zivpn" "bin/$ARCH/badvpn-udpgw" "bin/$ARCH/udp-custom"; do
-    binary_matches_arch "$BASE_DIR/$rel" || die "Binary tidak valid atau salah arsitektur: $rel"
+    file "$BASE_DIR/$rel" | grep -q 'ELF' || die "Binary tidak valid atau bukan ELF: $rel"
 done
 
 # ================= LICENSE CHECK =================
@@ -460,7 +444,6 @@ run_module(){
 
 # HAProxy dipasang terlebih dahulu tetapi tidak bind port sampai sertifikat siap.
 run_module install/haproxy.sh
-run_module install/nginx.sh
 command -v haproxy >/dev/null 2>&1 || die "HAProxy tidak terpasang."
 
 run_module install/xray.sh
@@ -512,7 +495,6 @@ systemctl daemon-reload
 
 services=(
     xray
-    nginx
     haproxy
     ssh
     dropbear
@@ -573,7 +555,6 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 echo "Domain      : $domain"
 echo "Xray        : OK"
 echo "HAProxy     : OK"
-echo "Nginx       : OK (ARISC-style proxy)"
 echo "SSH/WS      : OK"
 echo "WireGuard   : OK"
 echo "UDP Custom  : OK"

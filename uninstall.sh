@@ -124,7 +124,7 @@ rm -rf /etc/ayah-alma
 rm -rf /etc/autoscriptvpn
 rm -rf /etc/udp-custom
 
-rm -f /etc/nginx/conf.d/xray.conf /etc/nginx/conf.d/acme-bootstrap.conf /etc/nginx/conf.d/ayah-alma-arisc.conf
+rm -f /etc/nginx/conf.d/xray.conf /etc/nginx/conf.d/acme-bootstrap.conf
 rm -f /etc/haproxy/haproxy.cfg
 rm -rf /etc/haproxy/certs
 
