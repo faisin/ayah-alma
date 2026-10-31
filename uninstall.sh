@@ -66,7 +66,9 @@ services=(
     wg-quick@wg0
     zivpn
     dropbear-ws
+    dropbear-wss
     stunnel-ws
+    ayah-ssh-ssl
 )
 
 for svc in "${services[@]}"; do
@@ -89,7 +91,7 @@ rm -f /etc/systemd/system/udp-custom.service
 rm -f /etc/systemd/system/udpgw.service
 rm -f /etc/systemd/system/zivpn.service
 rm -f /etc/systemd/system/dropbear-ws.service
-rm -f /etc/systemd/system/stunnel-ws.service
+rm -f /etc/systemd/system/stunnel-ws.service /etc/systemd/system/dropbear-wss.service /etc/systemd/system/ayah-ssh-ssl.service
 
 rm -f /etc/systemd/system/acme*.service
 rm -f /etc/systemd/system/acme*.timer
@@ -110,7 +112,7 @@ rm -f /usr/local/bin/udp-custom
 rm -f /usr/local/bin/badvpn-udpgw
 rm -f /usr/local/bin/zivpn
 rm -f /usr/local/bin/dropbearws
-rm -f /usr/local/bin/stunnelws
+rm -f /usr/local/bin/stunnelws /usr/local/bin/dropbearwss
 
 # ================= REMOVE CONFIG =================
 

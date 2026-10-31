@@ -1,50 +1,37 @@
-# Laporan audit Ayah Alma — alur pengujian langsung di VPS
+# AYAH ALMA — Laporan audit konfigurasi SSH dan reverse proxy
 
-## Tujuan dan alur
+## Arsitektur yang diterapkan
 
-Arsitektur web: HAProxy menguasai port publik TCP 80/443 dan merutekan path tunneling yang dikenal ke backend masing-masing. Request web yang tidak cocok diarahkan ke Nginx pada `127.0.0.1:8080`. Nginx tidak bind port publik. Listener TCP lainnya tetap ditangani HAProxy; WireGuard dan ZiVPN tetap memakai UDP langsung.
+- HAProxy satu-satunya pemilik listener publik TCP 80 dan 443.
+- OpenSSH langsung pada TCP 22.
+- Dropbear langsung pada TCP 109 dan 143.
+- SSH WS loopback `127.0.0.1:2082` menuju Dropbear 109.
+- SSH WSS loopback `127.0.0.1:2096` menuju Dropbear 143; TLS diterminasi di HAProxy.
+- Nginx website fallback hanya pada `127.0.0.1:8080`.
+- Semua inbound Xray bind ke `127.0.0.1`; HAProxy merutekan WS, HTTPUpgrade, dan gRPC berdasarkan path.
+- Sertifikat HTTP-01 menggunakan webroot melalui HAProxy ke Nginx; HAProxy tidak dihentikan saat challenge.
 
-GitHub hanya menjadi tempat penyimpanan source. Semua pengujian dilakukan di VPS target. Seluruh file workflow GitHub Actions telah dikeluarkan dari paket ini. Agar workflow yang sudah ada di remote benar-benar berhenti, penghapusan `.github/workflows/` juga harus di-commit dan di-push; mengekstrak ZIP saja tidak menghapus file remote.
+## Temuan lama yang diperbaiki
 
-Alur yang benar:
+- Listener HAProxy lama pada 109/143, 444, dan 10011–10013 dihapus.
+- Dropbear 1109/1143 diganti menjadi 109/143.
+- Dua bridge Go diperbaiki untuk membaca header HTTP lengkap, mendukung GET/CGI, CONNECT, X-Online-Host, X-Real-Host, multi-request payload, raw tunnel, dan framing RFC 6455.
+- Nginx tidak lagi memiliki routing Xray duplikat.
+- Inbound raw TLS Xray yang tidak bisa dipetakan oleh frontend HTTP HAProxy dihapus.
+- Service stunnel dan SSH SSL-only port 444 tidak lagi dipasang.
+- Menu dan uninstall diperbarui untuk service `dropbear-wss`.
+- `setup.sh` menambahkan pemeriksaan port dan alamat bind setelah instalasi.
 
-1. Ekstrak source pada VPS target.
-2. Jalankan `bash tools/vps-audit.sh --static`.
-3. Tinjau kegagalan/peringatan dan perbaiki sebelum instalasi.
-4. Jalankan installer sesuai README proyek pada VPS yang sudah dicadangkan.
-5. Jalankan `sudo bash tools/vps-audit.sh --post-install`.
-6. Periksa log untuk service yang gagal dan lakukan pengujian koneksi dari klien eksternal.
-7. Simpan source dan catatan hasil uji di GitHub setelah tes VPS.
+## Pemeriksaan yang dilakukan pada paket hasil
 
-## Pemeriksaan yang sudah dijalankan pada paket di lingkungan audit
+- Semua file `*.sh` lolos `bash -n`.
+- `config/xray.json` valid; 15 inbound menggunakan `127.0.0.1` dan tidak ada port duplikat.
+- Kedua program Go lolos `gofmt`, `go test ./...`, dan build.
+- Smoke test lolos untuk GET CGI/X-Online-Host, payload multi-request `[split]`, raw data preservation, dan WebSocket frame RFC 6455.
+- Pemeriksaan statis HAProxy menunjukkan bind publik hanya pada port 80 dan 443.
 
-- 51 file berekstensi `.sh` selain `menu1.sh` lolos `bash -n`.
-- 4 file Python lolos parsing AST.
-- 2 file JSON di `config/` valid.
-- `go test ./...` pada `internal/go` berhasil; kedua paket melaporkan tidak ada test case.
-- `menu1.sh` masih memiliki kesalahan sintaks lama (EOF saat mencari tanda kurung tutup) dan sengaja dipertahankan sebagai backup, bukan skrip aktif.
+## Batas pemeriksaan
 
-## Perbaikan untuk alur VPS
+Binary HAProxy tidak tersedia pada lingkungan build ini, sehingga `haproxy -c` belum dijalankan di sini. Installer akan menjalankan validasi `haproxy -c -f /etc/haproxy/haproxy.cfg` pada VPS sebelum mengaktifkan konfigurasi final. Checkout sumber tidak memiliki folder `bin/amd64`; installer mengandalkan Release ZIP untuk binary arsitektur tersebut dan keberadaan Release harus dipastikan sebelum instalasi. Belum dilakukan instalasi end-to-end pada VPS target atau tes koneksi dari jaringan eksternal.
 
-- Menghapus `.github/workflows/audit.yml` agar push tidak menjalankan tes di GitHub.
-- Menghapus `.github/workflows/main.yml` agar workflow `Oracle Auto Retry` yang dijadwalkan setiap 15 menit tidak berjalan dari repository ini.
-- Menambahkan `tools/vps-audit.sh` untuk pemeriksaan statis dan diagnostik pasca-instalasi langsung di VPS. Skrip ini tidak mengubah firewall atau me-restart service.
-- Memasang Nginx sebagai fallback web loopback di `127.0.0.1:8080`, menambahkan backend default di HAProxy untuk request yang tidak cocok dengan rute tunneling, serta menambahkan health check `/__health`.
-- Menambahkan pemeriksaan file Nginx fallback sebagai file wajib pada preflight installer.
-- Mengganti instruksi `TESTING.md` agar alur berpusat pada VPS, bukan GitHub Actions.
-
-## Belum boleh dianggap lulus
-
-- HAProxy belum dapat divalidasi di lingkungan audit ini karena binary HAProxy tidak tersedia. Skrip audit VPS akan memvalidasi konfigurasi jika HAProxy terpasang. Template Nginx juga belum dapat diuji dengan `nginx -t` pada lingkungan audit ini; installer dan mode pasca-instalasi akan menjalankannya pada VPS.
-- Belum ada instalasi end-to-end pada VPS target.
-- DNS, penerbitan sertifikat ACME, firewall provider, koneksi klien, IPv6, WireGuard, ZiVPN, UDP Custom, serta alur upgrade belum diuji dari jaringan nyata.
-- `go test` hanya menunjukkan paket dapat diuji/build; output menunjukkan tidak ada test case.
-- `menu1.sh` sengaja tidak diperbaiki karena file cadangan lama; jangan menjalankannya sebagai entrypoint.
-
-## Catatan sumber binary
-
-Source checkout ini menyertakan binary ARM64 untuk sebagian layanan, sementara installer juga mengandalkan Release/runtime sesuai arsitektur. Sebelum instalasi, jalankan audit dan pastikan installer memperoleh seluruh binary wajib dari sumber Release yang dikonfigurasi. Jangan menganggap paket siap untuk semua arsitektur hanya karena pemeriksaan sintaks lolos.
-
-## Risiko operasional
-
-Installer utama mengubah firewall, paket, sertifikat, konfigurasi HAProxy/Xray/WireGuard, dan unit systemd. Jalankan hanya pada OS/arsitektur yang didukung, dengan snapshot/backup dan akses console atau jalur SSH pemulihan. Firewall di panel provider harus disetel terpisah dari firewall di dalam VPS.
+Jalankan installer hanya setelah backup/snapshot VPS tersedia dan akses SSH pemulihan tetap dapat digunakan.

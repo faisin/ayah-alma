@@ -110,7 +110,7 @@ if command -v sshd >/dev/null 2>&1; then
         [[ "$ssh_port" =~ ^[0-9]+$ ]] && SSH_PORTS+=("$ssh_port")
     done < <(sshd -T 2>/dev/null | awk '$1 == "port" {print $2}' | sort -nu)
 fi
-for port in "${SSH_PORTS[@]}" 80 109 143 443 444 10011 10012 10013; do
+for port in "${SSH_PORTS[@]}" 80 109 143 443; do
     allow_iptables_port 4 tcp "$port"
     allow_iptables_port 6 tcp "$port"
 done
@@ -170,8 +170,8 @@ required=(
     sshws/udp-custom.service
     internal/go/dropbear-ws/main.go
     internal/go/dropbear-ws.service
-    internal/go/stunnel-ws/main.go
-    internal/go/stunnel-ws.service
+    internal/go/dropbear-wss/main.go
+    internal/go/dropbear-wss.service
     menu.sh
     uninstall.sh
     clearcache
@@ -478,7 +478,7 @@ install -m 755 "$BASE_DIR/uninstall.sh" /root/uninstall.sh
 for f in \
     /usr/local/bin/xray \
     /usr/local/bin/dropbearws \
-    /usr/local/bin/stunnelws \
+    /usr/local/bin/dropbearwss \
     /usr/local/bin/badvpn-udpgw \
     /usr/local/bin/udp-custom \
     /usr/local/bin/zivpn; do
@@ -497,8 +497,7 @@ services=(
     ssh
     dropbear
     dropbear-ws
-    stunnel-ws
-    ayah-ssh-ssl
+    dropbear-wss
     udpgw
     udp-custom
     wg-quick@wg0
@@ -523,6 +522,28 @@ for svc in "${services[@]}"; do
             die "Health check gagal: $svc"
         }
 done
+
+# ================= PORT / ROUTING AUDIT =================
+# HAProxy must be the only owner of public HTTP/HTTPS ports.
+listener_has() {
+    local port="$1" process="$2" output
+    output="$(ss -H -lntp "sport = :$port" 2>/dev/null || true)"
+    [[ -n "$output" ]] && grep -q "$process" <<<"$output"
+}
+listener_has 80 haproxy || die "Port 80 tidak dimiliki HAProxy."
+listener_has 443 haproxy || die "Port 443 tidak dimiliki HAProxy."
+for port in 80 443; do
+    output="$(ss -H -lntp "sport = :$port" 2>/dev/null || true)"
+    grep -qv haproxy <<<"$output" && die "Ada proses selain HAProxy yang memakai port publik $port."
+done
+listener_has 8080 nginx || die "Nginx tidak mendengarkan backend 127.0.0.1:8080."
+listener_has 109 dropbear || die "Dropbear tidak mendengarkan port 109."
+listener_has 143 dropbear || die "Dropbear tidak mendengarkan port 143."
+listener_has 2082 dropbearws || die "SSH WebSocket tidak aktif pada 127.0.0.1:2082."
+listener_has 2096 dropbearwss || die "SSH WSS tidak aktif pada 127.0.0.1:2096."
+jq -e 'all(.inbounds[]; .listen == "127.0.0.1") and (([.inbounds[].port] | length) == ([.inbounds[].port] | unique | length)) and all(.inbounds[]; .port != 22 and .port != 80 and .port != 443 and .port != 109 and .port != 143 and .port != 2082 and .port != 2096 and .port != 8080)' /etc/xray/config.json >/dev/null \
+    || die "Inbound Xray tidak loopback atau ada port yang bentrok."
+info "Port audit lulus: HAProxy 80/443, Dropbear 109/143, WS 2082/2096, Nginx 8080, Xray loopback."
 
 # ================= ROOT PROFILE =================
 PROFILE_MARKER="# BEGIN AYAH-ALMA MENU"

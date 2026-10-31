@@ -1,0 +1,5 @@
+AYAH ALMA — ROUTING TLS
+
+Tidak ada listener raw TCP TLS publik pada port 10011-10013. Port publik 443 dimiliki HAProxy sebagai HTTPS/TLS termination. Seluruh inbound Xray menggunakan listener loopback dan dipilih melalui path HTTP/WebSocket/HTTPUpgrade/gRPC.
+
+Sertifikat Let's Encrypt dipasang pada /etc/haproxy/certs/ayah-alma.pem dan digunakan HAProxy. Nginx tidak bind port 80 atau 443.

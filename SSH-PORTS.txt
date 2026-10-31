@@ -1,0 +1,9 @@
+AYAH ALMA SSH / WEBSOCKET PORT MAP
+
+OpenSSH: TCP 22 (direct)
+Dropbear: TCP 109 and 143 (direct)
+SSH WebSocket: public HTTP 80 via HAProxy -> 127.0.0.1:2082 -> Dropbear 127.0.0.1:109
+SSH WSS: public HTTPS 443 via HAProxy TLS termination -> 127.0.0.1:2096 -> Dropbear 127.0.0.1:143
+
+There is no separate SSH SSL-only listener (444) and no stunnel service.
+HAProxy is the only service that binds public TCP 80 and 443. Nginx and Xray use loopback backends.

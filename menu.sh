@@ -116,7 +116,7 @@ WG=$(service_status wg-quick@wg0)
 ZIVPN=$(service_status zivpn)
 UDPCUSTOM=$(service_status udp-custom)
 DROPBEARWS=$(service_status dropbear-ws)
-STUNNELWS=$(service_status stunnel-ws)
+DROPBEARWSS=$(service_status dropbear-wss)
 DROPBEAR=$(service_status dropbear)
 
 # ================= USER COUNT =================
@@ -211,7 +211,7 @@ printf " ${GREEN}%-10s${NC} : %-15b  ${GREEN}%-10s${NC} : %-15b\n" "XRAY" "$XRAY
 printf " ${GREEN}%-10s${NC} : %-15b  ${GREEN}%-10s${NC} : %-15b\n" "HAPROXY" "$HAPROXY" "DROPBEAR" "$DROPBEAR"
 printf " ${GREEN}%-10s${NC} : %-15b  ${GREEN}%-10s${NC} : %-15b\n" "WIREGUARD" "$WG" "UDP CUSTOM" "$UDPCUSTOM"
 printf " ${GREEN}%-10s${NC} : %-15b  ${GREEN}%-10s${NC} : %-15b\n" "UDP ZIVPN" "$ZIVPN" "SSH WS" "$DROPBEARWS"
-printf " ${GREEN}%-10s${NC} : %-15b\n" "WSS" "$STUNNELWS"
+printf " ${GREEN}%-10s${NC} : %-15b\n" "WSS" "$DROPBEARWSS"
 
 echo -e "${BLUE}└─────────────────────────────────────────────┘${NC}"
 

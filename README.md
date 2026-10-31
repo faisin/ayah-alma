@@ -1,80 +1,59 @@
-# Ayah Alma — tunneling & reverse proxy
+# Ayah Alma — SSH, WebSocket, Xray & reverse proxy
 
-Installer satu perintah untuk Ubuntu/Debian (amd64 dan arm64). Audit ini memusatkan routing **TCP** pada HAProxy supaya port publik dan layanan tunneling dikelola dari satu konfigurasi.
+Installer Ubuntu/Debian. Routing HTTP/HTTPS dipusatkan pada HAProxy agar tidak ada konflik antara SSH WebSocket, website Nginx, dan Xray.
 
-## Arsitektur reverse proxy
+## Prinsip arsitektur
 
-- **HAProxy** adalah pintu masuk publik untuk HTTP/WebSocket, HTTPUpgrade, gRPC, dan TCP passthrough.
-- **TCP 80**: route berdasarkan path WebSocket/HTTPUpgrade/gRPC yang didaftarkan; path tidak dikenal mengembalikan HTTP 404.
-- **TCP 443**: TLS diakhiri di HAProxy, lalu route berdasarkan path ke backend lokal. Sertifikat dipasang di `/etc/haproxy/certs/ayah-alma.pem`.
-- **TCP 109 dan 143**: HAProxy meneruskan koneksi ke Dropbear yang hanya mendengarkan di `127.0.0.1`.
-- **TCP 444**: HAProxy meneruskan koneksi SSH SSL-only ke `127.0.0.1:2222`.
-- **TCP 10011–10013**: HAProxy meneruskan koneksi ke backend VMess/VLESS/Trojan TLS di loopback.
-- **SSH administrasi TCP 22** sengaja tetap langsung ke `sshd` agar akses pemulihan VPS tidak bergantung pada HAProxy.
-- **UDP WireGuard 51820 dan ZiVPN 5667** tidak dapat dimasukkan ke router HTTP/TCP HAProxy yang dipakai proyek ini; keduanya tetap menjadi listener UDP tersendiri. Ini batas protokol, bukan jalur yang dilewatkan diam-diam melalui HAProxy.
-- Nginx tidak diperlukan untuk tunneling dan dinonaktifkan oleh installer jika ada.
+- HAProxy adalah satu-satunya listener publik untuk TCP **80 dan 443**.
+- TLS HTTPS diterminasi di HAProxy; backend WSS menerima koneksi HTTP lokal.
+- Nginx hanya melayani website pada `127.0.0.1:8080`.
+- Semua inbound Xray hanya bind ke `127.0.0.1`; HAProxy memilih backend berdasarkan path.
+- OpenSSH tetap langsung pada TCP **22**.
+- Dropbear langsung pada TCP **109 dan 143**. HAProxy tidak mengambil kedua port ini.
+- SSH WS: HAProxy `:80 /ssh-ws` → `127.0.0.1:2082` → Dropbear `127.0.0.1:109`.
+- SSH WSS: HAProxy `:443 /ssh-wss` → `127.0.0.1:2096` → Dropbear `127.0.0.1:143`.
+- Tidak ada lagi SSH SSL-only port 444, stunnel, atau listener raw TLS publik 10011–10013.
+- WireGuard dan ZiVPN tetap menggunakan listener UDP tersendiri karena HAProxy HTTP/TCP tidak merutekan UDP.
 
-### Diagram
+## Payload SSH yang didukung
 
-```text
-Client TCP 80/443, 109/143, 444, 10011-10013
-                    |
-                 HAProxy
-          +---------+----------+
-          |         |          |
-       HTTP(S)    TCP SSH    TCP TLS
-          |         |          |
-       Xray WS/   Dropbear   Xray raw TLS
-       Upgrade/   loopback   loopback
-       gRPC       :109/:143  :10001-10003
+Bridge SSH menerima HTTP/1.0 dan HTTP/1.1, GET, GET CGI (`/cdn-cgi/trace`), CONNECT, header `X-Online-Host`, `X-Real-Host`, `Upgrade`, `Connection: Upgrade`, serta beberapa request header berurutan untuk payload multi-bagian `[split]`. Data sesudah header tidak dibuang. Bridge juga menangani framing RFC 6455 ketika klien mengirim `Sec-WebSocket-Key`; payload HTTP Injector tanpa key memakai mode raw tunnel.
 
-Client UDP 51820 ----------------> WireGuard
-Client UDP 5667 -----------------> ZiVPN
-Client TCP 22 -------------------> sshd (administrasi)
-```
+## Peta port
 
-## Port & routing
+Lihat [`PORT-MAP.md`](PORT-MAP.md) untuk daftar backend Xray lengkap, alur request, dan routing sertifikat.
 
-| Publik | Protokol | Tujuan lokal | Pengelola |
-|---|---|---|---|
-| 80/TCP | HTTP WS/HTTPUpgrade/gRPC | Xray/SSH WS sesuai path | HAProxy |
-| 443/TCP | HTTPS WS/HTTPUpgrade/gRPC | Xray/SSH WS sesuai path | HAProxy |
-| 109/TCP | SSH Dropbear | `127.0.0.1:109` | HAProxy TCP |
-| 143/TCP | SSH Dropbear | `127.0.0.1:143` | HAProxy TCP |
-| 444/TCP | SSH SSL-only | `127.0.0.1:2222` | HAProxy TCP |
-| 10011/TCP | VMess TLS | `127.0.0.1:10001` | HAProxy TCP |
-| 10012/TCP | VLESS TLS | `127.0.0.1:10002` | HAProxy TCP |
-| 10013/TCP | Trojan TLS | `127.0.0.1:10003` | HAProxy TCP |
-| 22/TCP | SSH administrasi | sshd | Langsung, untuk pemulihan |
-| 51820/UDP | WireGuard | WireGuard | Listener UDP tersendiri |
-| 5667/UDP | ZiVPN | ZiVPN | Listener UDP tersendiri |
+| Publik | Pemilik | Tujuan |
+|---|---|---|
+| 22/TCP | OpenSSH | Administrasi SSH |
+| 80/TCP | HAProxy | HTTP, SSH WS, Xray WS/HTTPUpgrade/gRPC, website fallback |
+| 443/TCP | HAProxy | HTTPS/TLS termination, SSH WSS, Xray WS/HTTPUpgrade/gRPC, website fallback |
+| 109/TCP | Dropbear | SSH langsung |
+| 143/TCP | Dropbear | SSH langsung |
+| 51820/UDP | WireGuard | VPN UDP |
+| 5667/UDP | ZiVPN | VPN UDP |
+
+## Sertifikat
+
+Let's Encrypt HTTP-01 menggunakan webroot `/var/www/ayah-alma`. Saat bootstrap, HAProxy tetap memegang port 80 dan meneruskan challenge ke Nginx privat. Nginx tidak pernah bind port publik 80/443.
 
 ## Sebelum push ke GitHub
 
-1. Periksa semua URL `faisin/ayah-alma` di `setup.sh` dan `internal/go/go.mod`. Jika repository tujuan berbeda, ubah ke `OWNER/REPO` milik Anda. URL dalam `setup.sh` menentukan dari repository mana source, Release ZIP, dan `config/license.conf` diambil saat instalasi.
-2. Tinjau `config/license.conf`. Installer memakai allowlist IP publik; IP VPS baru harus memang diizinkan oleh pemilik repository. Jangan hapus mekanisme lisensi tanpa keputusan pemiliknya.
-3. Jangan commit private key, token OCI, file `.env`, sertifikat runtime, atau database pengguna produksi. Secret OCI disimpan di GitHub **Settings → Secrets and variables → Actions**. Workflow memerlukan `OCI_USER_OCID`, `OCI_TENANCY_OCID`, `OCI_REGION`, `OCI_SUBNET_ID`, `OCI_FINGERPRINT`, `OCI_KEY_FILE`, dan `OCI_SSH_PUBLIC_KEY`.
-4. Workflow OCI sekarang mencari image Ubuntu 22.04 agar sejalan dengan `setup.sh`; periksa ketersediaan image di region dan tenancy sebelum mengaktifkan jadwal.
-5. Jika menggunakan satu baris installer, pastikan URL raw GitHub mengarah ke repository Anda, bukan upstream.
+1. Periksa URL `faisin/ayah-alma` di `setup.sh` dan `internal/go/go.mod`; ubah jika repository tujuan berbeda.
+2. Tinjau `config/license.conf`. Pastikan IP VPS memang diizinkan oleh pemilik repository.
+3. Jangan commit private key, token OCI, `.env`, sertifikat runtime, atau database pengguna produksi.
+4. Pastikan URL raw GitHub mengarah ke repository Anda.
 
 ## Instalasi
 
-Setelah URL repository dan allowlist lisensi sudah benar, jalankan `setup.sh` sebagai root di VPS Ubuntu/Debian yang didukung. Domain harus mengarah ke IP VPS dan TCP port 80 harus dapat diakses dari internet saat penerbitan sertifikat Let's Encrypt HTTP-01.
+Jalankan `setup.sh` sebagai root pada Ubuntu/Debian yang didukung. DNS domain harus mengarah ke VPS dan TCP 80/443 harus dapat dijangkau dari internet. Installer memvalidasi port dan konfigurasi layanan sebelum menyatakan berhasil.
 
 ## Validasi lokal sebelum push
 
 ```bash
-# Bash syntax
-find . -type f \( -name '*.sh' -o -name 'menu' -o -name 'm-*' -o -name 'clearcache' \) -print0 | while IFS= read -r -d '' f; do bash -n "$f" || exit 1; done
-
-# JSON / Python / Go
+find . -type f -name '*.sh' -print0 | xargs -0 -n1 bash -n
 python3 -c 'import json; json.load(open("config/xray.json")); json.load(open("config/udp-custom.json"))'
-python3 -c 'compile(open("main.py", encoding="utf-8").read(), "main.py", "exec")'
 (cd internal/go && go test ./...)
 ```
 
-Pemeriksaan statis bukan pengganti uji `haproxy -c`, `xray -test`, dan pengujian koneksi nyata di VPS.
-
-## Audit sebelum push
-
-Workflow **Repository Audit** memeriksa sintaks skrip, JSON, Python, build Go, dan sintaks konfigurasi HAProxy. Lihat [`TESTING.md`](TESTING.md) untuk urutan push yang disarankan dan batas pengujian.
+Validasi lokal bukan pengganti `haproxy -c`, `xray -test`, `nginx -t`, dan pengujian koneksi nyata di VPS.
