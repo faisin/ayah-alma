@@ -60,10 +60,25 @@ fi
 [[ "$(ps -p 1 -o comm= 2>/dev/null | tr -d '[:space:]')" == "systemd" ]] \
     || die "Sistem ini tidak menjalankan systemd sebagai PID 1; layanan Ayah Alma tidak dapat dikelola dengan benar."
 
-# Pastikan ruang disk cukup sebelum mengunduh arsip dan memasang runtime.
-FREE_KB=$(df -Pk /tmp | awk 'NR == 2 {print $4}')
-[[ "$FREE_KB" =~ ^[0-9]+$ ]] || die "Tidak dapat memeriksa ruang disk pada /tmp."
-(( FREE_KB >= 1048576 )) || die "Ruang kosong di /tmp kurang dari 1 GiB. Kosongkan disk lalu ulangi instalasi."
+# Pilih lokasi kerja dengan ruang kosong minimal 1 GiB.
+# Jangan memaksa /tmp: pada sebagian VPS, /tmp berupa tmpfs kecil.
+MIN_FREE_KB=1048576
+BEST_BASE=""
+BEST_FREE_KB=0
+for candidate in /var/tmp /root /tmp; do
+    [[ -d "$candidate" && -w "$candidate" ]] || continue
+    available_kb=$(df -Pk "$candidate" 2>/dev/null | awk 'NR == 2 {print $4}')
+    [[ "$available_kb" =~ ^[0-9]+$ ]] || continue
+    if (( available_kb > BEST_FREE_KB )); then
+        BEST_BASE="$candidate"
+        BEST_FREE_KB="$available_kb"
+    fi
+done
+(( BEST_FREE_KB >= MIN_FREE_KB )) \
+    || die "Ruang kosong kurang dari 1 GiB pada lokasi kerja (/var/tmp, /root, /tmp). Kosongkan disk lalu ulangi instalasi."
+WORK_DIR=$(mktemp -d "$BEST_BASE/ayah-alma.XXXXXX") \
+    || die "Gagal membuat direktori kerja pada $BEST_BASE."
+CLEAN_WORK=true
 
 : > /root/log-install.txt
 exec > >(tee -a /root/log-install.txt) 2>&1
@@ -132,8 +147,6 @@ else
 fi
 
 # MAIN GitHub adalah sumber utama; Release ZIP melengkapi file besar/runtime.
-WORK_DIR=$(mktemp -d /tmp/ayah-alma.XXXXXX)
-CLEAN_WORK=true
 MAIN_DIR="$WORK_DIR/main"
 ZIP_DIR=""
 mkdir -p "$MAIN_DIR"
