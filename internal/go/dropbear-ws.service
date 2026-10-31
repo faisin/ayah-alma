@@ -1,14 +1,14 @@
 [Unit]
-Description=AYAH ALMA SSH WebSocket bridge (Dropbear 109)
-After=network.target dropbear.service
-Wants=dropbear.service
+Description=Go WS Stunnel Service - by Ayah Alma
+After=network.target
 
 [Service]
+User=root
 Type=simple
 ExecStart=/usr/local/bin/dropbearws
 Restart=always
-RestartSec=2
-LimitNOFILE=100000
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
+
