@@ -18,15 +18,15 @@ sleep 1
 apt update -y
 DEBIAN_FRONTEND=noninteractive apt install -y \
     openssh-server \
-    stunnel4 \
     curl \
     wget \
-    python3 \
-    screen \
-    git \
     golang-go \
     libtomcrypt1 \
     libtommath1 \
+    jq \
+    openssl \
+    file \
+    iproute2 \
     dropbear
 
 mkdir -p /usr/local/bin
@@ -37,12 +37,42 @@ echo ""
 echo -e "${GREEN}[INFO] Configuring Dropbear...${NC}"
 echo ""
 
+systemctl disable --now dropbear.socket 2>/dev/null || true
 systemctl stop dropbear 2>/dev/null || true
+systemctl stop dropbear-ws dropbear-wss 2>/dev/null || true
+
+# Remove legacy WebSocket/stunnel units from previous AYAH ALMA revisions.
+for old_svc in stunnel-ws ws-stunnel ws-dropbear ayah-ssh-ssl stunnel4; do
+    systemctl disable --now "$old_svc" 2>/dev/null || true
+done
+rm -f /etc/systemd/system/stunnel-ws.service \
+      /etc/systemd/system/ws-stunnel.service \
+      /etc/systemd/system/ws-dropbear.service \
+      /etc/systemd/system/ayah-ssh-ssl.service
+systemctl daemon-reload
+rm -f /usr/local/bin/stunnelws /usr/local/bin/ws-stunnel /usr/local/bin/ws-dropbear
+
+# Refuse to steal the requested Dropbear/bridge ports if another daemon still owns them.
+for port in 109 143 2082 2096; do
+    if ss -H -lnt "sport = :$port" 2>/dev/null | grep -q .; then
+        echo -e "${RED}[ERROR] TCP port $port masih dipakai layanan lain. Hentikan/pindahkan layanan tersebut sebelum memasang Dropbear.${NC}"
+        ss -lntp "sport = :$port" 2>/dev/null || true
+        exit 1
+    fi
+done
+if command -v sshd >/dev/null 2>&1; then
+    for port in 109 143; do
+        if sshd -T 2>/dev/null | awk '$1 == "port" {print $2}' | grep -qx "$port"; then
+            echo -e "${RED}[ERROR] OpenSSH juga memakai port $port. Sisakan OpenSSH pada port 22 agar tidak bentrok dengan Dropbear.${NC}"
+            exit 1
+        fi
+    done
+fi
 
 cat > /etc/default/dropbear <<EOF
-NO_START=0
+NO_START=1
 DROPBEAR_PORT=109
-DROPBEAR_EXTRA_ARGS="-p 143 -p 127.0.0.1:1109 -p 127.0.0.1:1143 -W 65536 -b /etc/issue.net"
+DROPBEAR_EXTRA_ARGS="-p 143 -W 65536 -b /etc/issue.net"
 DROPBEAR_RECEIVE_WINDOW=65536
 EOF
 
@@ -65,52 +95,18 @@ else
 fi
 chmod 644 /etc/issue.net
 
-# ================= SSH SSL-ONLY (TLS TANPA WEBSOCKET) =================
-# TLS diterminasi oleh stunnel pada loopback, lalu diteruskan ke OpenSSH.
-# Port publik 444 diteruskan oleh HAProxy TCP ke 127.0.0.1:2222.
-if [[ ! -s /etc/xray/cert.crt || ! -s /etc/xray/private.key ]]; then
-    echo -e "${RED}[ERROR] Sertifikat Let's Encrypt belum tersedia; SSH SSL-only tidak dapat disiapkan.${NC}"
-    exit 1
-fi
-
-mkdir -p /etc/stunnel
-cat > /etc/stunnel/ayah-ssh-ssl.conf <<'EOF'
-client = no
-foreground = yes
-sslVersionMin = TLSv1.2
-
-[ssh-ssl-only]
-accept = 127.0.0.1:2222
-connect = 127.0.0.1:22
-cert = /etc/xray/cert.crt
-key = /etc/xray/private.key
-EOF
-chmod 600 /etc/stunnel/ayah-ssh-ssl.conf
-
-cat > /etc/systemd/system/ayah-ssh-ssl.service <<'EOF'
+# ================= DROPBEAR PUBLIC PORTS =================
+# Dropbear owns public TCP 109 and 143 directly. HAProxy does not bind these ports.
+cat > /etc/systemd/system/dropbear.service <<'EOF'
 [Unit]
-Description=AYAH ALMA SSH SSL-only (TLS without WebSocket)
-After=network.target ssh.service
-Wants=ssh.service
-
-[Service]
-Type=simple
-ExecStart=/usr/bin/stunnel4 /etc/stunnel/ayah-ssh-ssl.conf
-Restart=on-failure
-RestartSec=3
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-cat > /etc/systemd/system/dropbear.service <<EOF
-[Unit]
-Description=Dropbear SSH Server
+Description=AYAH ALMA Dropbear SSH (ports 109 and 143)
 After=network.target
 
 [Service]
-ExecStart=/usr/sbin/dropbear -E -F -p 109 -p 143 -p 127.0.0.1:1109 -p 127.0.0.1:1143 -r /etc/dropbear/dropbear_rsa_host_key -r /etc/dropbear/dropbear_ecdsa_host_key -W 65536 -b /etc/issue.net
+Type=simple
+ExecStart=/usr/sbin/dropbear -E -F -p 109 -p 143 -r /etc/dropbear/dropbear_rsa_host_key -r /etc/dropbear/dropbear_ecdsa_host_key -W 65536 -b /etc/issue.net
 Restart=always
+RestartSec=2
 
 [Install]
 WantedBy=multi-user.target
@@ -129,18 +125,18 @@ fi
 # Tentukan base direktori secara dinamis
 GO_DIR="$SCRIPT_DIR/internal/go"
 [ -d "$GO_DIR/dropbear-ws" ] || { echo -e "${RED}[ERROR] dropbear-ws source tidak ditemukan.${NC}"; exit 1; }
-[ -d "$GO_DIR/stunnel-ws" ] || { echo -e "${RED}[ERROR] stunnel-ws source tidak ditemukan.${NC}"; exit 1; }
+[ -d "$GO_DIR/dropbear-wss" ] || { echo -e "${RED}[ERROR] dropbear-wss source tidak ditemukan.${NC}"; exit 1; }
 
 ( cd "$GO_DIR" && go build -ldflags="-s -w" -o /usr/local/bin/dropbearws ./dropbear-ws )
-( cd "$GO_DIR" && go build -ldflags="-s -w" -o /usr/local/bin/stunnelws ./stunnel-ws )
-chmod +x /usr/local/bin/dropbearws /usr/local/bin/stunnelws
+( cd "$GO_DIR" && go build -ldflags="-s -w" -o /usr/local/bin/dropbearwss ./dropbear-wss )
+chmod +x /usr/local/bin/dropbearws /usr/local/bin/dropbearwss
 [ -x /usr/local/bin/dropbearws ] || exit 1
-[ -x /usr/local/bin/stunnelws ] || exit 1
+[ -x /usr/local/bin/dropbearwss ] || exit 1
 
 [ -f "$GO_DIR/dropbear-ws.service" ] || { echo -e "${RED}[ERROR] dropbear-ws.service tidak ditemukan.${NC}"; exit 1; }
 cp "$GO_DIR/dropbear-ws.service" /etc/systemd/system/dropbear-ws.service
-[ -f "$GO_DIR/stunnel-ws.service" ] || { echo -e "${RED}[ERROR] stunnel-ws.service tidak ditemukan.${NC}"; exit 1; }
-cp "$GO_DIR/stunnel-ws.service" /etc/systemd/system/stunnel-ws.service
+[ -f "$GO_DIR/dropbear-wss.service" ] || { echo -e "${RED}[ERROR] dropbear-wss.service tidak ditemukan.${NC}"; exit 1; }
+cp "$GO_DIR/dropbear-wss.service" /etc/systemd/system/dropbear-wss.service
 
 # ================= INSTALL BADVPN UDPGW =================
 
@@ -196,7 +192,7 @@ cp "$SCRIPT_DIR/sshws/udp-custom.service" /etc/systemd/system/
 
 chmod 644 /etc/systemd/system/dropbear.service 2>/dev/null || true
 chmod 644 /etc/systemd/system/dropbear-ws.service 2>/dev/null || true
-chmod 644 /etc/systemd/system/stunnel-ws.service 2>/dev/null || true
+chmod 644 /etc/systemd/system/dropbear-wss.service 2>/dev/null || true
 chmod 644 /etc/systemd/system/udpgw.service 2>/dev/null || true
 chmod 644 /etc/systemd/system/udp-custom.service 2>/dev/null || true
 
@@ -204,7 +200,7 @@ systemctl daemon-reload
 
 # ================= ENABLE & START SERVICES =================
 
-for svc in ssh dropbear dropbear-ws stunnel-ws udpgw udp-custom ayah-ssh-ssl; do
+for svc in ssh dropbear dropbear-ws dropbear-wss udpgw udp-custom; do
     if systemctl list-unit-files | grep -q "^${svc}.service"; then
         systemctl enable "$svc" >/dev/null 2>&1
         systemctl restart "$svc" >/dev/null 2>&1
@@ -221,10 +217,10 @@ SSH PANEL (AYAH-ALMA)
 ━━━━━━━━━━━━━━━━━━━━━━
 
 OpenSSH             : 22
-Dropbear            : 109,143 (direct) + 127.0.0.1:1109,1143 (internal WS)
-SSH Websocket       : 2082
-SSH SSL Websocket   : 2096
-SSH SSL-only        : 444 (TLS tanpa WebSocket)
+Dropbear            : 109,143 (langsung)
+SSH WebSocket       : 80 /ssh-ws -> 127.0.0.1:2082 -> Dropbear 109
+SSH WSS             : 443 /ssh-wss -> 127.0.0.1:2096 -> Dropbear 143
+HAProxy             : satu-satunya listener publik 80/443
 BadVPN UDPGW        : 7300
 
 ━━━━━━━━━━━━━━━━━━━━━━
@@ -232,5 +228,5 @@ BadVPN UDPGW        : 7300
 EOF
 
 echo ""
-echo -e "${GREEN}[ OK ] SSH + WS + UDPGW Installation Completed (Ayah-Alma)${NC}"
+echo -e "${GREEN}[ OK ] SSH + Dropbear + WebSocket + UDPGW Installation Completed (Ayah-Alma)${NC}"
 echo ""

@@ -109,7 +109,7 @@ printf '\\033[1;36m   PENGATURAN SERTIFIKAT LET\\x27S ENCRYPT\\033[0m\n'
 printf '\\033[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\033[0m\n'
 echo "Domain layanan    : $domain"
 echo "Domain sertifikat : $CERT_DOMAIN"
-echo "Metode            : HTTP-01 Standalone (port 80)"
+echo "Metode            : HTTP-01 Webroot melalui HAProxy (port 80)"
 echo "Catatan           : DNS domain harus mengarah ke VPS dan TCP port 80 harus terbuka."
 
 echo -e "${GREEN}🔐 Memastikan acme.sh tersedia...${NC}"
@@ -130,18 +130,9 @@ if ! "$ACME" --register-account -m "admin@$CERT_DOMAIN"; then
     echo -e "${YELLOW}[PERINGATAN] Akun ACME mungkin sudah terdaftar; melanjutkan.${NC}"
 fi
 
-echo -e "${YELLOW}[INFO] Menghentikan HAProxy sementara untuk validasi HTTP-01 port 80...${NC}"
-HAPROXY_WAS_ACTIVE="$(systemctl is-active haproxy 2>/dev/null || true)"
-HAPROXY_TEMP_STOPPED=true
-restore_haproxy() {
-    [[ "${HAPROXY_TEMP_STOPPED:-false}" == "true" ]] || return 0
-    if [[ "${HAPROXY_WAS_ACTIVE:-inactive}" == "active" ]]; then
-        systemctl start haproxy >/dev/null 2>&1 || echo "[WARNING] HAProxy gagal dipulihkan otomatis; periksa systemctl status haproxy." >&2
-    else
-        systemctl stop haproxy >/dev/null 2>&1 || true
-    fi
-}
-trap restore_haproxy EXIT
+# ACME uses webroot behind HAProxy. HAProxy remains the only public listener on port 80.
+mkdir -p /var/www/ayah-alma/.well-known/acme-challenge
+chmod 755 /var/www/ayah-alma /var/www/ayah-alma/.well-known /var/www/ayah-alma/.well-known/acme-challenge
 
 # Validasi sertifikat mencakup masa berlaku, nama domain, dan kecocokan private key.
 certificate_matches_domain() {
@@ -170,8 +161,8 @@ acme_certificate_valid() {
         private_key_matches_certificate "$ACME_CERT_DIR/fullchain.cer" "$ACME_CERT_DIR/${CERT_DOMAIN}.key"
 }
 
-if lsof -nP -iTCP:80 -sTCP:LISTEN 2>/dev/null | grep -q LISTEN; then
-    echo -e "${RED}[ERROR] Port 80 masih digunakan proses lain setelah HAProxy dihentikan.${NC}"
+if ! systemctl is-active --quiet haproxy; then
+    echo -e "${RED}[ERROR] HAProxy bootstrap harus aktif untuk melayani HTTP-01 webroot.${NC}"
     exit 1
 fi
 
@@ -179,9 +170,7 @@ fi
 # karena sertifikat masih berlaku. Jangan langsung menggagalkan installer:
 # periksa sertifikat yang sudah ada terlebih dahulu.
 ISSUE_STATUS=0
-"$ACME" --issue --standalone -d "$CERT_DOMAIN" --keylength ec-256 \
-    --pre-hook "systemctl stop haproxy" \
-    --post-hook 'if grep -q "^frontend ayah_http_80" /etc/haproxy/haproxy.cfg 2>/dev/null; then systemctl start haproxy; fi' || ISSUE_STATUS=$?
+"$ACME" --issue -w /var/www/ayah-alma -d "$CERT_DOMAIN" --keylength ec-256 --pre-hook "true" --post-hook "true" || ISSUE_STATUS=$?
 
 if [[ "$ISSUE_STATUS" -ne 0 ]]; then
     if acme_certificate_valid; then
@@ -194,8 +183,6 @@ if [[ "$ISSUE_STATUS" -ne 0 ]]; then
     fi
 fi
 
-systemctl stop haproxy >/dev/null 2>&1 || true
-# Trap tetap aktif sampai konfigurasi final berhasil dan HAProxy kembali sehat.
 
 # ================= INSTALL CERTIFICATE =================
 
@@ -207,7 +194,7 @@ if ! "$ACME" \
     --ecc \
     --key-file /etc/xray/private.key \
     --fullchain-file /etc/xray/cert.crt \
-    --reloadcmd 'cat /etc/xray/cert.crt /etc/xray/private.key > /etc/haproxy/certs/ayah-alma.pem && chmod 600 /etc/haproxy/certs/ayah-alma.pem && if grep -q "^frontend ayah_http_80" /etc/haproxy/haproxy.cfg 2>/dev/null; then haproxy -c -f /etc/haproxy/haproxy.cfg && systemctl reload haproxy || systemctl restart haproxy; fi; if systemctl is-active --quiet xray; then systemctl restart xray; fi; if systemctl is-active --quiet ayah-ssh-ssl; then systemctl restart ayah-ssh-ssl; fi'; then
+    --reloadcmd 'cat /etc/xray/cert.crt /etc/xray/private.key > /etc/haproxy/certs/ayah-alma.pem && chmod 600 /etc/haproxy/certs/ayah-alma.pem && if grep -q "^frontend ayah_http_80" /etc/haproxy/haproxy.cfg 2>/dev/null; then haproxy -c -f /etc/haproxy/haproxy.cfg && systemctl reload haproxy || systemctl restart haproxy; fi; if systemctl is-active --quiet xray; then systemctl restart xray; fi'; then
     if installed_certificate_valid; then
         echo -e "${YELLOW}[PERINGATAN] acme.sh gagal memasang ulang sertifikat, tetapi sertifikat dan private key yang sudah terpasang valid dan cocok. Mempertahankan sertifikat yang ada.${NC}"
     else
@@ -339,9 +326,6 @@ if ! systemctl is-active --quiet haproxy; then
     exit 1
 fi
 
-# Kedua layanan sudah sehat; hentikan trap pemulihan sementara.
-HAPROXY_TEMP_STOPPED=false
-trap - EXIT
 
 # ================= INSTALL LOG =================
 touch /root/log-install.txt
@@ -352,7 +336,7 @@ XRAY PANEL (AYAH-ALMA)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Domain layanan       : ${domain}
 Sertifikat           : ${CERT_DOMAIN}
-Sertifikat metode    : Let's Encrypt HTTP-01 Standalone
+Sertifikat metode    : Let's Encrypt HTTP-01 Webroot via HAProxy
 
 WebSocket:
 VMess WS TLS         : 443 /vmess -> 127.0.0.1:23456
@@ -360,7 +344,7 @@ VMess WS non-TLS     : 80  /vmess -> 127.0.0.1:23457
 VLESS WS TLS         : 443 /vless -> 127.0.0.1:14016
 VLESS WS non-TLS     : 80  /vless -> 127.0.0.1:14017
 Trojan WS TLS        : 443 /trojan-ws -> 127.0.0.1:25432
-Trojan WS non-TLS    : 80  /trojan-ws -> 127.0.0.1:25432
+Trojan WS non-TLS    : 80  /trojan-ws -> 127.0.0.1:25433
 
 HTTPUpgrade (HAProxy port 80 dan 443):
 VMess HTTPUpgrade    : /upvmess  -> 127.0.0.1:14019
@@ -385,7 +369,7 @@ echo -e "${GREEN}✅ XRAY INSTALLED SUCCESSFULLY${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 echo -e "Domain         : ${domain}
-Raw TLS SNI    : ${vmess_domain}, ${vless_domain}, ${trojan_domain}"
+TLS domain     : ${vmess_domain}, ${vless_domain}, ${trojan_domain}"
 
 echo -e "XRAY Config    : /etc/xray/config.json"
 echo -e "HAProxy Config : /etc/haproxy/haproxy.cfg"

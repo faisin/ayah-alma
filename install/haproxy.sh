@@ -26,10 +26,42 @@ rm -f /etc/nginx/sites-enabled/default /etc/nginx/conf.d/xray.conf /etc/nginx/co
 ln -sfn /etc/nginx/sites-available/ayah-alma-fallback /etc/nginx/sites-enabled/ayah-alma-fallback
 
 nginx -t || die 'Konfigurasi Nginx fallback tidak valid.'
+if nginx -T 2>/dev/null | grep -E '^[[:space:]]*listen[[:space:]]+([^;]*:)?(80|443)([[:space:];]|$)' >/dev/null; then
+    die 'Nginx masih memiliki listener port 80/443. Sisakan Nginx hanya pada 127.0.0.1:8080.'
+fi
 systemctl enable nginx >/dev/null
 systemctl restart nginx || die 'Nginx fallback gagal berjalan.'
 
-# HAProxy is enabled but not started until install/xray.sh provisions the TLS cert.
-systemctl enable haproxy >/dev/null 2>&1 || true
-info 'Nginx fallback aktif hanya pada 127.0.0.1:8080.'
-info 'HAProxy siap dipasang; listener publik akan aktif setelah sertifikat dan konfigurasi final tersedia.'
+# Temporary HTTP-only HAProxy bootstrap. HAProxy remains the sole public port-80 owner;
+# ACME HTTP-01 challenge files are served by the private Nginx backend.
+cat > /etc/haproxy/haproxy.cfg <<'BOOTSTRAP_HAPROXY_EOF'
+global
+    log /dev/log local0
+    user haproxy
+    group haproxy
+    daemon
+    maxconn 100000
+
+defaults
+    mode http
+    log global
+    option httplog
+    timeout connect 10s
+    timeout client 1m
+    timeout server 1m
+
+frontend ayah_http_80
+    bind :80
+    bind :::80 v6only
+    default_backend be_nginx_bootstrap
+
+backend be_nginx_bootstrap
+    server nginx 127.0.0.1:8080
+BOOTSTRAP_HAPROXY_EOF
+IPV6_DISABLED="$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6 2>/dev/null || echo 1)"
+if [[ "$IPV6_DISABLED" != "0" ]]; then sed -i '/^[[:space:]]*bind :::80/d' /etc/haproxy/haproxy.cfg; fi
+haproxy -c -f /etc/haproxy/haproxy.cfg || die 'Konfigurasi HAProxy bootstrap tidak valid.'
+systemctl enable haproxy >/dev/null
+systemctl restart haproxy || die 'HAProxy bootstrap gagal berjalan.'
+info 'Nginx hanya mendengarkan 127.0.0.1:8080.'
+info 'HAProxy bootstrap aktif pada port publik 80 untuk validasi ACME; final 80/443 dipasang oleh install/xray.sh.'
